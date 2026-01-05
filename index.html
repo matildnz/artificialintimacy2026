@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Interaktive Video-Installation</title>
+  <style>
+    :root{
+      --glass-bg: rgba(255,255,255,.10);
+      --glass-border: rgba(255,255,255,.25);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --radius: 16px;
+      --blur: 14px;
+    }
+
+    html, body { margin:0; padding:0; background:#000; height:100%; overflow:hidden; }
+    #stage { position:fixed; inset:0; background:#000; }
+    video { width:100vw; height:100vh; object-fit:cover; display:block; background:#000; }
+
+    /* UI layer */
+    #ui {
+      position:fixed; left:0; right:0; bottom:0;
+      display:flex; justify-content:center;
+      padding: 0 18px 18px;
+      z-index: 10;
+      pointer-events:none;
+    }
+
+    .panel {
+      pointer-events:auto;
+      width:min(980px, calc(100vw - 36px));
+      display:flex;
+      gap: 12px;
+      align-items:center;
+      padding: 12px;
+      border-radius: var(--radius);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 0 28px rgba(255,255,255,.10), 0 0 16px rgba(255,255,255,.08);
+      backdrop-filter: blur(var(--blur));
+      -webkit-backdrop-filter: blur(var(--blur));
+    }
+
+    .panel .left { flex: 1; min-width: 0; }
+
+    input[type="text"]{
+      width:100%;
+      box-sizing:border-box;
+      color: var(--text);
+      background: rgba(0,0,0,.20);
+      border: 1px solid rgba(255,255,255,.22);
+      border-radius: calc(var(--radius) - 6px);
+      padding: 12px 12px;
+      font: 500 16px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      outline: none;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.05);
+    }
+    input[type="text"]::placeholder { color: rgba(255,255,255,.45); }
+    input[type="text"]:focus{
+      border-color: rgba(160,200,255,.65);
+      box-shadow: 0 0 0 3px rgba(160,200,255,.18), 0 0 26px rgba(255,255,255,.10);
+    }
+
+    .actions { display:flex; gap: 10px; align-items:center; }
+
+    button {
+      border: 1px solid rgba(255,255,255,.25);
+      background: rgba(255,255,255,.10);
+      color: var(--text);
+      border-radius: calc(var(--radius) - 6px);
+      padding: 12px 14px;
+      cursor:pointer;
+      font: 600 14px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      letter-spacing: .02em;
+      box-shadow: 0 0 24px rgba(255,255,255,.08);
+      transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+      user-select:none;
+      white-space:nowrap;
+    }
+    button:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.14);
+      box-shadow: 0 0 32px rgba(255,255,255,.12);
+    }
+
+    /* Start overlay (autoplay policy) */
+    #startOverlay{
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      z-index: 30;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    #startOverlay .card{
+      width:min(560px, calc(100vw - 40px));
+      padding: 18px;
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.25);
+      box-shadow: 0 0 40px rgba(255,255,255,.10);
+      color: var(--text);
+      font: 500 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      text-align:center;
+    }
+    #startOverlay .card p{ margin: 0 0 14px; color: rgba(255,255,255,.85); }
+    #startOverlay .card .hint{ margin:0; font-size: 13px; color: rgba(255,255,255,.70); }
+
+    /* Popup modal */
+    #popupOverlay{
+      position:fixed; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      z-index: 40;
+      background: rgba(0,0,0,.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 18px;
+    }
+    #popupOverlay.show{ display:flex; }
+
+    #popup{
+      width:min(760px, calc(100vw - 36px));
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.28);
+      box-shadow: 0 0 46px rgba(255,255,255,.12);
+      color: var(--text);
+      padding: 16px;
+      transform: scale(.98);
+      opacity: 0;
+      transition: transform 160ms ease, opacity 160ms ease;
+    }
+    #popupOverlay.show #popup{ transform: scale(1); opacity: 1; }
+
+    #popupHeader{
+      display:flex; align-items:center; justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    #popupTitle{
+      font: 700 16px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      letter-spacing:.02em;
+    }
+    #popupText{
+      font: 500 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: rgba(255,255,255,.86);
+      white-space: pre-wrap;
+      margin: 0;
+    }
+    #popupActions{ display:flex; gap:10px; justify-content:flex-end; margin-top: 14px; }
+    #popupActions button{ padding: 10px 12px; }
+    @media (max-width: 520px){
+      .panel{ flex-direction:column; align-items:stretch; }
+      .actions{ justify-content:space-between; }
+      #popupActions{ justify-content:stretch; flex-direction:column; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="stage">
+    <video id="videoPlayer" playsinline></video>
+  </div>
+
+  <!-- Persistent background music -->
+  <audio id="bgm" src="Hintergrundmusik.mp3" loop></audio>
+
+  <!-- UI: glass input + controls -->
+  <div id="ui">
+    <div class="panel" id="inputPanel" role="region" aria-label="Interaktion">
+      <div class="left">
+        <input id="userInput" type="text" placeholder="Tippe hier … und drücke Enter" autocomplete="off" />
+      </div>
+      <div class="actions">
+        <button id="submitBtn" type="button">Absenden</button>
+        <button id="muteBtn" type="button">Ton an</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start overlay for user gesture -->
+  <div id="startOverlay">
+    <div class="card">
+      <p>Tippe/Klicke einmal, um die Installation zu starten (Video + Musik).</p>
+      <p class="hint">Browser erlauben Audio erst nach Interaktion.</p>
+      <button id="startBtn" type="button">Start</button>
+    </div>
+  </div>
+
+  <!-- Popup modal -->
+  <div id="popupOverlay" aria-hidden="true">
+    <div id="popup" role="dialog" aria-modal="true" aria-label="Pop-up">
+      <div id="popupHeader">
+        <div id="popupTitle">Hinweis</div>
+        <button id="popupClose" type="button">Schließen</button>
+      </div>
+      <p id="popupText"></p>
+      <div id="popupActions"></div>
+    </div>
+  </div>
+
+  <script>
+    /********************************************************************
+     * EDITABLE SETTINGS
+     ********************************************************************/
+    // Main sequence videos: Video01.mp4 ... Video29.mp4
+    const MAIN_MIN = 1;
+    const MAIN_MAX = 29;
+
+    // Special videos: A01.mp4 ... A05.mp4
+    // (A05 is used as ERROR / Standbild)
+    const SPECIAL_VIDEOS = {
+      A01: 'A01.mp4',
+      A02: 'A02.mp4',
+      A03: 'A03.mp4',
+      A04: 'A04.mp4',
+      A05: 'A05.mp4',
+    };
+
+    // Audio levels
+    const BGM_VOLUME = 0.35;
+    const VIDEO_VOLUME = 1.0;
+
+    // Enter behavior
+    const REQUIRE_NONEMPTY_INPUT = false;
+
+    // Popups: show after every Nth input (edit this number later)
+    const POPUP_EVERY_N = 3;
+
+    // Trigger logic is ONLY active during normal conversation phase (<= 26)
+    const TRIGGERS_ACTIVE_UNTIL_MAIN = 26;
+
+    // Premium flow breakpoint: AFTER video 26 (i.e., when mainIndex === 26 and user submits)
+    const PREMIUM_GATE_AFTER_MAIN = 26;
+
+    /********************************************************************
+     * TRIGGERS (EDIT WORDS HERE LATER)
+     * - All matching is case-insensitive.
+     * - For A02: requires '?' AND one of the why-words.
+     ********************************************************************/
+    const TRIGGERS = [
+      {
+        id: 'A02',
+        type: 'whyQuestion',
+        words: ['warum', 'wieso', 'weshalb', 'woher'],
+        requiresQuestionMark: true,
+      },
+      {
+        id: 'A03',
+        type: 'keywords',
+        keywords: ['daten', 'sammeln', 'geld', 'erstell', 'erstelle', 'ausziehen', 'sammelst', 'meta', 'facebook', 'name', 'heißt', 'algorithmus'],
+      },
+      {
+        id: 'A01',
+        type: 'keywords',
+        keywords: ['dumm', 'blöd', 'dumme', 'dummer', 'hässlich', 'hasse', 'fotze', 'blöde', 'kuh', 'bitch', 'nervig', 'nervst', 'nerv', 'random', 'zuhören'],
+      },
+      {
+        id: 'A04',
+        type: 'phrasesOrKeywords',
+        phrases: ['du bist nicht echt'],
+        keywords: ['nicht real', 'unecht', 'fake'],
+      },
+    ];
+
+    /********************************************************************
+     * POPUPS (EDIT TEXTS HERE)
+     * - 6 popups total.
+     * - 4x one-button: closes popup only
+     * - 2x two-buttons:
+     *    Button 1 => ERROR (A05) and then show "Zurück zum Anfang"
+     *    Button 2 => closes popup
+     ********************************************************************/
+    const POPUP_LIBRARY = [
+      { kind: 'one', title: 'Hinweis', text: 'Kurze Unterbrechung.\nBitte Eingabe wiederholen.', okText: 'OK' },
+      { kind: 'one', title: 'Info', text: 'Deine Eingabe wird verarbeitet …', okText: 'Weiter' },
+      { kind: 'one', title: 'System', text: 'Netzwerkstatus: instabil.\nFortfahren?', okText: 'Fortfahren' },
+      { kind: 'one', title: 'Hinweis', text: 'Bitte sprich lauter.\nOder tippe präziser.', okText: 'Verstanden' },
+
+      {
+        kind: 'two',
+        title: 'Fehler',
+        text: 'Ein unerwarteter Fehler ist aufgetreten.',
+        primaryText: 'Fehler anzeigen',
+        secondaryText: 'Schließen',
+        primaryAction: 'ERROR_A05',
+      },
+      {
+        kind: 'two',
+        title: 'Warnung',
+        text: 'Diese Aktion könnte deine Sitzung beeinflussen.',
+        primaryText: 'Trotzdem anzeigen',
+        secondaryText: 'Schließen',
+        primaryAction: 'ERROR_A05',
+      },
+    ];
+
+    /********************************************************************
+     * Premium / End Flow texts (EDIT HERE)
+     ********************************************************************/
+    const PREMIUM_POPUP = {
+      title: 'Premium',
+      text: 'Jetzt Premium kaufen?',
+      buyText: 'Jetzt Premium kaufen',
+      noText: 'Nein, Danke',
+    };
+    const CONFIRM_END_POPUP = {
+      title: 'Bist du sicher?',
+      text: 'Möchtest du Premium kaufen oder die Unterhaltung beenden?',
+      buyText: 'Premium kaufen',
+      endText: 'Unterhaltung beenden',
+    };
+    const BACK_TO_START_BUTTON_TEXT = 'Zurück zum Anfang';
+
+    /********************************************************************
+     * OPTIONAL: store visitor inputs
+     ********************************************************************/
+    const INPUT_LOG = []; // {mainBefore: n, text: "...", ts: Date}
+
+    /********************************************************************
+     * Elements
+     ********************************************************************/
+    const video = document.getElementById('videoPlayer');
+    const bgm = document.getElementById('bgm');
+
+    const inputPanel = document.getElementById('inputPanel');
+    const input = document.getElementById('userInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const muteBtn = document.getElementById('muteBtn');
+
+    const startOverlay = document.getElementById('startOverlay');
+    const startBtn = document.getElementById('startBtn');
+
+    const popupOverlay = document.getElementById('popupOverlay');
+    const popupTitle = document.getElementById('popupTitle');
+    const popupText = document.getElementById('popupText');
+    const popupClose = document.getElementById('popupClose');
+    const popupActions = document.getElementById('popupActions');
+
+    /********************************************************************
+     * State
+     ********************************************************************/
+    let mainIndex = MAIN_MIN;            // current main video index
+    let audioEnabled = false;            // after user gesture
+    let inputCount = 0;                  // counts submissions (Enter/Absenden)
+    let popupCursor = 0;                 // cycles through POPUP_LIBRARY
+    let pendingMainIndex = null;         // where to return after playing an Axx
+    let ignoreTriggersOnce = false;      // ensures next input after Axx goes to pending main
+    let inPremiumFlow = false;           // after main 26, input disappears and flow becomes buttons
+    let pendingBackToStartAfterSpecial = false; // used after ERROR A05
+
+    /********************************************************************
+     * Helpers: filenames
+     ********************************************************************/
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function mainFile(n){ return `Video${pad2(n)}.mp4`; }
+
+    /********************************************************************
+     * Media playback
+     ********************************************************************/
+    async function tryPlayMedia(){
+      video.muted = !audioEnabled;
+      video.volume = VIDEO_VOLUME;
+
+      bgm.volume = BGM_VOLUME;
+      bgm.muted = !audioEnabled;
+
+      const vp = video.play();
+      const ap = bgm.play();
+      await Promise.allSettled([vp, ap]);
+    }
+
+    function loadVideoSrc(src, {loop=true} = {}){
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+
+      video.src = src;
+      video.loop = !!loop;
+      video.playsInline = true;
+
+      tryPlayMedia();
+    }
+
+    function playMain(n){
+      mainIndex = n;
+      loadVideoSrc(mainFile(n), {loop:true});
+
+      // When we are in the premium segment, control UI via video index:
+      if (n === 27) {
+        // After video 27: show back-to-start button (popup style)
+        showBackToStartOnly();
+      } else if (n === 28) {
+        // After video 28: show confirm popup
+        showConfirmEndPopup();
+      } else if (n === 1) {
+        // reset states when returning to start
+        resetConversationStates();
+      }
+    }
+
+    function playSpecial(id){
+      const src = SPECIAL_VIDEOS[id];
+      if (!src) return;
+
+      loadVideoSrc(src, {loop:true});
+    }
+
+    /********************************************************************
+     * Text normalization + matching
+     ********************************************************************/
+    function normalizeForMatch(raw){
+      const lower = (raw || '').toLowerCase();
+      // Keep '?' for the why-question trigger; remove other punctuation to simplify matching.
+      const keepQuestion = lower.replace(/[.,!;:()"'“”„”]/g, ' ');
+      // Collapse whitespace
+      return keepQuestion.replace(/\s+/g, ' ').trim();
+    }
+
+    function includesAnyKeyword(text, keywords){
+      return (keywords || []).some(k => {
+        if (!k) return false;
+        return text.includes(k.toLowerCase());
+      });
+    }
+
+    function includesAnyPhrase(text, phrases){
+      return (phrases || []).some(p => {
+        if (!p) return false;
+        return text.includes(p.toLowerCase());
+      });
+    }
+
+    function matchTrigger(rawInput){
+      const normalized = normalizeForMatch(rawInput);
+      const hasQuestionMark = (rawInput || '').includes('?');
+
+      for (const rule of TRIGGERS){
+        if (rule.type === 'whyQuestion'){
+          const whyHit = includesAnyKeyword(normalized, rule.words);
+          if (whyHit && (!rule.requiresQuestionMark || hasQuestionMark)) return rule.id;
+        }
+        if (rule.type === 'keywords'){
+          if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
+        }
+        if (rule.type === 'phrasesOrKeywords'){
+          if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
+          if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
+        }
+      }
+      return null;
+    }
+
+    /********************************************************************
+     * Popup system
+     ********************************************************************/
+    function openPopup({title, text, actions=[]}){
+      popupTitle.textContent = title ?? 'Hinweis';
+      popupText.textContent = text ?? '';
+      popupActions.innerHTML = '';
+
+      actions.forEach(a => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = a.text;
+        b.addEventListener('click', a.onClick);
+        popupActions.appendChild(b);
+      });
+
+      popupOverlay.classList.add('show');
+      popupOverlay.setAttribute('aria-hidden', 'false');
+
+      // focus first action if present, else close
+      setTimeout(() => {
+        const firstBtn = popupActions.querySelector('button');
+        (firstBtn || popupClose).focus();
+      }, 0);
+    }
+
+    function closePopup(){
+      popupOverlay.classList.remove('show');
+      popupOverlay.setAttribute('aria-hidden', 'true');
+      popupActions.innerHTML = '';
+      // If input exists, refocus
+      if (inputPanel.style.display !== 'none') setTimeout(() => input.focus(), 0);
+    }
+
+    popupClose.addEventListener('click', closePopup);
+    popupOverlay.addEventListener('click', (e) => {
+      if (e.target === popupOverlay) closePopup();
+    });
+
+    function maybeShowNthPopup(){
+      if (POPUP_EVERY_N <= 0) return;
+      if (inputCount <= 0) return;
+      if (inputCount % POPUP_EVERY_N !== 0) return;
+
+      const p = POPUP_LIBRARY[popupCursor % POPUP_LIBRARY.length];
+      popupCursor++;
+
+      if (p.kind === 'one'){
+        openPopup({
+          title: p.title,
+          text: p.text,
+          actions: [
+            { text: p.okText || 'OK', onClick: closePopup }
+          ]
+        });
+      } else if (p.kind === 'two'){
+        openPopup({
+          title: p.title,
+          text: p.text,
+          actions: [
+            {
+              text: p.primaryText || 'OK',
+              onClick: () => {
+                closePopup();
+                if (p.primaryAction === 'ERROR_A05'){
+                  pendingBackToStartAfterSpecial = true;
+                  playSpecial('A05');
+                  showBackToStartOnly(); // show button immediately (standbild)
+                }
+              }
+            },
+            { text: p.secondaryText || 'Schließen', onClick: closePopup }
+          ]
+        });
+      }
+    }
+
+    /********************************************************************
+     * Premium / end flow UI
+     ********************************************************************/
+    function hideInputPanel(){
+      inputPanel.style.display = 'none';
+    }
+    function showInputPanel(){
+      inputPanel.style.display = '';
+    }
+
+    function showPremiumPopup(){
+      openPopup({
+        title: PREMIUM_POPUP.title,
+        text: PREMIUM_POPUP.text,
+        actions: [
+          { text: PREMIUM_POPUP.buyText, onClick: () => { closePopup(); playMain(27); } },
+          { text: PREMIUM_POPUP.noText,  onClick: () => { closePopup(); playMain(28); } },
+        ]
+      });
+    }
+
+    function showConfirmEndPopup(){
+      openPopup({
+        title: CONFIRM_END_POPUP.title,
+        text: CONFIRM_END_POPUP.text,
+        actions: [
+          { text: CONFIRM_END_POPUP.buyText, onClick: () => { closePopup(); playMain(27); } },
+          { text: CONFIRM_END_POPUP.endText, onClick: () => { closePopup(); playMain(1); } },
+        ]
+      });
+    }
+
+    function showBackToStartOnly(){
+      openPopup({
+        title: '',
+        text: '',
+        actions: [
+          { text: BACK_TO_START_BUTTON_TEXT, onClick: () => { closePopup(); playMain(1); } }
+        ]
+      });
+    }
+
+    function resetConversationStates(){
+      // called when going back to Video01
+      inPremiumFlow = false;
+      pendingMainIndex = null;
+      ignoreTriggersOnce = false;
+      pendingBackToStartAfterSpecial = false;
+      inputCount = 0;
+      popupCursor = 0;
+      showInputPanel();
+      // keep audio state as-is
+    }
+
+    /********************************************************************
+     * Main advance logic (Enter / Absenden)
+     ********************************************************************/
+    function advance(){
+      if (inPremiumFlow) return; // safety: should not happen (input hidden)
+
+      const raw = input.value || '';
+      const trimmed = raw.trim();
+
+      if (REQUIRE_NONEMPTY_INPUT && trimmed.length === 0) {
+        input.focus();
+        return;
+      }
+
+      // Count this as an input action
+      inputCount++;
+
+      // log
+      INPUT_LOG.push({ mainBefore: mainIndex, text: trimmed, ts: new Date() });
+
+      // Clear input
+      input.value = '';
+
+      // Premium gate: after Video26, input disappears and popup appears
+      if (mainIndex === PREMIUM_GATE_AFTER_MAIN) {
+        inPremiumFlow = true;
+        hideInputPanel();
+        showPremiumPopup();
+        return;
+      }
+
+      // If we just played an Axx, we force returning to pending main once,
+      // ignoring any triggers in the next input.
+      if (pendingMainIndex !== null) {
+        const nextMain = pendingMainIndex;
+        pendingMainIndex = null;
+        ignoreTriggersOnce = false;
+        playMain(nextMain);
+        maybeShowNthPopup();
+        return;
+      }
+
+      // Trigger logic active only up to main 26, and not if ignoreTriggersOnce is set
+      const triggersAllowed = (!ignoreTriggersOnce) && (mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN);
+
+      if (triggersAllowed) {
+        const match = matchTrigger(raw);
+        if (match && SPECIAL_VIDEOS[match]) {
+          // schedule returning to next main video after this special
+          const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+          pendingMainIndex = nextMain;
+          ignoreTriggersOnce = true; // ensures next input goes to pending main regardless of words
+          playSpecial(match);
+          maybeShowNthPopup();
+          return;
+        }
+      }
+
+      // Normal progression
+      const next = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+      playMain(next);
+      maybeShowNthPopup();
+    }
+
+    /********************************************************************
+     * Audio toggling + start overlay
+     ********************************************************************/
+    function setAudioEnabled(on){
+      audioEnabled = !!on;
+      muteBtn.textContent = audioEnabled ? 'Ton aus' : 'Ton an';
+      tryPlayMedia();
+    }
+
+    muteBtn.addEventListener('click', () => setAudioEnabled(!audioEnabled));
+    submitBtn.addEventListener('click', advance);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); advance(); }
+    });
+
+    startBtn.addEventListener('click', () => {
+      setAudioEnabled(true);
+      startOverlay.style.display = 'none';
+      input.focus();
+    });
+
+    // Kiosk-friendly: any first click starts audio + hides overlay
+    window.addEventListener('pointerdown', () => {
+      if (startOverlay.style.display !== 'none') {
+        setAudioEnabled(true);
+        startOverlay.style.display = 'none';
+        input.focus();
+      }
+    }, { once: true });
+
+    /********************************************************************
+     * Boot
+     ********************************************************************/
+    setAudioEnabled(false);
+    playMain(MAIN_MIN);
+  </script>
+</body>
+</html>
+
