@@ -194,7 +194,6 @@
     <div id="popup" role="dialog" aria-modal="true" aria-label="Pop-up">
       <div id="popupHeader">
         <div id="popupTitle">Hinweis</div>
-        <button id="popupClose" type="button">Schließen</button>
       </div>
       <p id="popupText"></p>
       <div id="popupActions"></div>
@@ -228,12 +227,16 @@
 
     // Popups: show after every Nth input (edit this number later)
     const POPUP_EVERY_N = 3;
+//Popups am Ende erst nach X sekunden einblenden
+    const END_POPUP_DELAY = 5000; // in Millisekunden (5000 = 5 Sekunden)
 
     // Trigger logic is ONLY active during normal conversation phase (<= 26)
     const TRIGGERS_ACTIVE_UNTIL_MAIN = 26;
 
     // Premium flow breakpoint: AFTER video 26 (i.e., when mainIndex === 26 and user submits)
     const PREMIUM_GATE_AFTER_MAIN = 26;
+
+  
 
     /********************************************************************
      * TRIGGERS (EDIT WORDS HERE LATER)
@@ -274,27 +277,11 @@
      *    Button 2 => closes popup
      ********************************************************************/
     const POPUP_LIBRARY = [
-      { kind: 'one', title: 'Hinweis', text: 'Kurze Unterbrechung.\nBitte Eingabe wiederholen.', okText: 'OK' },
-      { kind: 'one', title: 'Info', text: 'Deine Eingabe wird verarbeitet …', okText: 'Weiter' },
-      { kind: 'one', title: 'System', text: 'Netzwerkstatus: instabil.\nFortfahren?', okText: 'Fortfahren' },
-      { kind: 'one', title: 'Hinweis', text: 'Bitte sprich lauter.\nOder tippe präziser.', okText: 'Verstanden' },
+      { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Ok' },
+      { kind: 'one', title: 'Mehr Authentizität?', text: 'Kaufe jetzt Premium, um echte Gefühle freizuschalten', okText: 'Jetzt kaufen', action: 'ERROR_A05'},
+      { kind: 'one', title: 'System', text: 'Gefühlsstatus: instabil.\nFortfahren?', okText: 'Fortfahren' },
+      { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Jetzt Premium kaufen', action: 'ERROR_A05'},
 
-      {
-        kind: 'two',
-        title: 'Fehler',
-        text: 'Ein unerwarteter Fehler ist aufgetreten.',
-        primaryText: 'Fehler anzeigen',
-        secondaryText: 'Schließen',
-        primaryAction: 'ERROR_A05',
-      },
-      {
-        kind: 'two',
-        title: 'Warnung',
-        text: 'Diese Aktion könnte deine Sitzung beeinflussen.',
-        primaryText: 'Trotzdem anzeigen',
-        secondaryText: 'Schließen',
-        primaryAction: 'ERROR_A05',
-      },
     ];
 
     /********************************************************************
@@ -500,35 +487,31 @@
       const p = POPUP_LIBRARY[popupCursor % POPUP_LIBRARY.length];
       popupCursor++;
 
-      if (p.kind === 'one'){
-        openPopup({
-          title: p.title,
-          text: p.text,
-          actions: [
-            { text: p.okText || 'OK', onClick: closePopup }
-          ]
-        });
-      } else if (p.kind === 'two'){
-        openPopup({
-          title: p.title,
-          text: p.text,
-          actions: [
-            {
-              text: p.primaryText || 'OK',
-              onClick: () => {
-                closePopup();
-                if (p.primaryAction === 'ERROR_A05'){
-                  pendingBackToStartAfterSpecial = true;
-                  playSpecial('A05');
-                  showBackToStartOnly(); // show button immediately (standbild)
-                }
-              }
-            },
-            { text: p.secondaryText || 'Schließen', onClick: closePopup }
-          ]
-        });
+     if (p.kind === 'one'){
+  openPopup({
+    title: p.title,
+    text: p.text,
+    actions: [
+      {
+        text: p.okText || 'OK',
+        onClick: () => {
+          closePopup();
+
+          if (p.action === 'ERROR_A05') {
+  pendingBackToStartAfterSpecial = true;
+  playSpecial('A05');
+
+  setTimeout(() => {
+    showBackToStartOnly();
+  }, END_POPUP_DELAY);
+}
+        }
       }
-    }
+    ]
+  });
+}
+      
+
 
     /********************************************************************
      * Premium / end flow UI
