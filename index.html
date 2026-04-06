@@ -183,8 +183,8 @@
   <!-- Start overlay for user gesture -->
   <div id="startOverlay">
     <div class="card">
-      //<p>Tippe/Klicke einmal, um die Installation zu starten (Video + Musik).</p>
-      //<p class="hint">Browser erlauben Audio erst nach Interaktion.</p>
+      <!-- <p>Tippe/Klicke einmal, um die Installation zu starten (Video + Musik).</p> -->
+<!-- <p class="hint">Browser erlauben Audio erst nach Interaktion.</p> -->
       <button id="startBtn" type="button">Start</button>
     </div>
   </div>
@@ -323,7 +323,7 @@
     const popupOverlay = document.getElementById('popupOverlay');
     const popupTitle = document.getElementById('popupTitle');
     const popupText = document.getElementById('popupText');
-    const popupClose = document.getElementById('popupClose');
+    //const popupClose = document.getElementById('popupClose');
     const popupActions = document.getElementById('popupActions');
 
     /********************************************************************
@@ -376,17 +376,22 @@
       loadVideoSrc(mainFile(n), {loop:true});
 
       // When we are in the premium segment, control UI via video index:
-      if (n === 27) {
-        // After video 27: show back-to-start button (popup style)
-        showBackToStartOnly();
-      } else if (n === 28) {
-        // After video 28: show confirm popup
-        showConfirmEndPopup();
-      } else if (n === 1) {
-        // reset states when returning to start
-        resetConversationStates();
-      }
-    }
+      function playMain(n){
+  mainIndex = n;
+  loadVideoSrc(mainFile(n), {loop:true});
+
+  if (n === 27) {
+    setTimeout(() => {
+      showBackToStartOnly();
+    }, END_POPUP_DELAY);
+  } else if (n === 28) {
+    setTimeout(() => {
+      showConfirmEndPopup();
+    }, END_POPUP_DELAY);
+  } else if (n === 1) {
+    resetConversationStates();
+  }
+}
 
     function playSpecial(id){
       const src = SPECIAL_VIDEOS[id];
@@ -474,7 +479,7 @@
       if (inputPanel.style.display !== 'none') setTimeout(() => input.focus(), 0);
     }
 
-    popupClose.addEventListener('click', closePopup);
+    //popupClose.addEventListener('click', closePopup);
     popupOverlay.addEventListener('click', (e) => {
       if (e.target === popupOverlay) closePopup();
     });
@@ -510,6 +515,8 @@
     ]
   });
 }
+}
+      
       
 
 
