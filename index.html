@@ -383,7 +383,7 @@
     {
       id: 'A11',
       type: 'keywords',
-      keywords: ['nein', 'ne', 'nope', 'nee'],
+      keywords: ['nein', 'nope', 'nee'],
     },
     {
       id: 'A12',
@@ -525,19 +525,34 @@
     return keepQuestion.replace(/\s+/g, ' ').trim();
   }
 
-  function includesAnyKeyword(text, keywords){
-    return (keywords || []).some(k => {
-      if (!k) return false;
-      return text.includes(normalizeForMatch(k));
-    });
-  }
+  function escapeRegex(str){
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
-  function includesAnyPhrase(text, phrases){
-    return (phrases || []).some(p => {
-      if (!p) return false;
-      return text.includes(normalizeForMatch(p));
-    });
-  }
+function includesAnyKeyword(text, keywords){
+  const normalizedText = normalizeForMatch(text);
+
+  return (keywords || []).some(k => {
+    const normalizedKeyword = normalizeForMatch(k);
+    if (!normalizedKeyword) return false;
+
+    // Match nur als eigenständiges Wort / eigenständige Wortfolge
+    const pattern = new RegExp(`(^|\\s)${escapeRegex(normalizedKeyword)}(?=\\s|$)`, 'i');
+    return pattern.test(normalizedText);
+  });
+}
+
+  function includesAnyPhraseStrict(text, phrases){
+  const normalizedText = normalizeForMatch(text);
+
+  return (phrases || []).some(p => {
+    const normalizedPhrase = normalizeForMatch(p);
+    if (!normalizedPhrase) return false;
+
+    const pattern = new RegExp(`(^|\\s)${escapeRegex(normalizedPhrase)}(?=\\s|$)`, 'i');
+    return pattern.test(normalizedText);
+  });
+}
 
   function tokenCount(text){
     if (!text) return 0;
@@ -568,7 +583,7 @@
     if (!normalized) return false;
 
     // Ausnahmen
-    if (includesAnyKeyword(normalized, ['nein', 'ne', 'nope', 'nee'])) return false;
+    if (includesAnyKeyword(normalized, ['nein', 'nope', 'nee'])) return false;
     if (includesAnyKeyword(normalized, ['lol', 'haha', 'hahaha'])) return false;
 
     const tokens = normalized.split(/\s+/).filter(Boolean);
