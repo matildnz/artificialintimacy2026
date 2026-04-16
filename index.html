@@ -282,7 +282,7 @@
   const TRIGGERS_ACTIVE_UNTIL_MAIN = 26;
   const PREMIUM_GATE_AFTER_MAIN = 26;
 
-  const TRIGGER_COOLDOWN_STEPS = 5; // pro Trigger-ID
+  const TRIGGER_COOLDOWN_STEPS = 2; // pro Trigger-ID
   const ANY_TRIGGER_GAP_STEPS = 2;  // global zwischen beliebigen Triggern
 
   const REPEAT_PHRASES = [
@@ -712,21 +712,23 @@ function includesAnyKeyword(text, keywords){
   }
 
   function loadVideoSrc(src, {loop=false, onEnded=null} = {}){
-    clearDelayedPopupTimer();
+  clearDelayedPopupTimer();
 
-    video.pause();
-    video.onended = null;
-    video.removeAttribute('src');
-    video.load();
+  video.pause();
+  video.onended = null;
+  video.loop = !!loop;
+  video.playsInline = true;
 
-    video.src = src;
-    video.loop = !!loop;
-    video.playsInline = true;
+  if (onEnded) video.onended = onEnded;
 
-    if (onEnded) video.onended = onEnded;
-
-    tryPlayMedia();
-  }
+  video.src = src;
+  video.load();
+  tryPlayMedia();
+}
+    //nur kurz zum debuggen eingefügt
+    video.onerror = () => {
+  console.error('Video konnte nicht geladen werden:', video.src);
+};
 
   function playIdleLoop(){
     loadVideoSrc(IDLE_VIDEO, { loop: true });
@@ -1028,14 +1030,13 @@ function includesAnyKeyword(text, keywords){
         return;
       }
 
-      if (isA13CanYou(raw) && canFireTriggerId('A13')) {
-        registerTriggerFire('A13');
-        pendingMainIndex = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
-        ignoreTriggersOnce = true;
-        playSpecial('A13');
-        maybeShowNthPopup();
-        return;
-      }
+      function isA13CanYou(rawInput){
+  const normalized = normalizeForMatch(rawInput);
+  const hasQuestionMark = (rawInput || '').includes('?');
+
+  return normalized.startsWith('kannst du') ||
+         (hasQuestionMark && includesAnyPhraseStrict(normalized, ['kannst du']));
+}
     }
 
     // 2) Direkte Trigger
@@ -1055,11 +1056,12 @@ function includesAnyKeyword(text, keywords){
     }
 
     // 3) Probabilistische Fallbacks / Konfrontation / Redirect
-    const probabilisticAllowed =
-      normalized.length > 6 &&
-      tokenCount(normalized) >= 2 &&
-      mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN &&
-      canFireAnyTrigger();
+   const probabilisticAllowed =
+  normalized.length > 6 &&
+  tokenCount(normalized) >= 2 &&
+  mainIndex >= 2 &&
+  mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN &&
+  canFireAnyTrigger();
 
     if (probabilisticAllowed) {
       const fallbackChance = currentLinearChance(FALLBACK_CHANCE_EARLY, FALLBACK_CHANCE_LATE);
