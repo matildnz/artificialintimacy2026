@@ -669,32 +669,32 @@ function includesAnyKeyword(text, keywords){
   }
 
   function matchTrigger(rawInput){
-    const normalized = normalizeForMatch(rawInput);
-    const hasQuestionMark = (rawInput || '').includes('?');
+  const normalized = normalizeForMatch(rawInput);
+  const hasQuestionMark = (rawInput || '').includes('?');
 
-    for (const rule of TRIGGERS){
-      if (!canFireTriggerId(rule.id)) continue;
+  for (const rule of TRIGGERS){
+    if (!canFireTriggerId(rule.id)) continue;
 
-      if (rule.type === 'whyQuestion'){
-        const whyHit = includesAnyKeyword(normalized, rule.words);
-        if (whyHit && (!rule.requiresQuestionMark || hasQuestionMark)) return rule.id;
-      }
-
-      if (rule.type === 'keywords'){
-        if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
-      }
-
-      if (rule.type === 'phrases'){
-        if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
-      }
-
-      if (rule.type === 'phrasesOrKeywords'){
-        if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
-        if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
-      }
+    if (rule.type === 'whyQuestion'){
+      const whyHit = includesAnyKeyword(normalized, rule.words);
+      if (whyHit && (!rule.requiresQuestionMark || hasQuestionMark)) return rule.id;
     }
-    return null;
+
+    if (rule.type === 'keywords'){
+      if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
+    }
+
+    if (rule.type === 'phrases'){
+      if (includesAnyPhraseStrict(normalized, rule.phrases)) return rule.id;
+    }
+
+    if (rule.type === 'phrasesOrKeywords'){
+      if (includesAnyPhraseStrict(normalized, rule.phrases)) return rule.id;
+      if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
+    }
   }
+  return null;
+}
 
   /********************************************************************
    * Media playback
