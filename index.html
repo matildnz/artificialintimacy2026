@@ -111,6 +111,42 @@
       box-shadow: 0 0 48px rgba(255,255,255,.14);
     }
 
+    #centerButtonOverlay{
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 35;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+#centerButtonOverlay.show{
+  display: flex;
+}
+
+#centerButton{
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(255,255,255,.10);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 18px 28px;
+  cursor: pointer;
+  font: 700 18px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  box-shadow: 0 0 40px rgba(255,255,255,.10);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+
+#centerButton:hover{
+  transform: translateY(-1px);
+  background: rgba(255,255,255,.14);
+  box-shadow: 0 0 48px rgba(255,255,255,.14);
+}
+
     #popupOverlay{
       position:fixed; inset:0;
       display:none;
@@ -185,6 +221,10 @@
   <div id="startOverlay">
     <button id="startBtn" type="button">Start</button>
   </div>
+
+  <div id="centerButtonOverlay" aria-hidden="true">
+  <button id="centerButton" type="button">Zurück zum Anfang</button>
+</div>
 
   <div id="popupOverlay" aria-hidden="true">
     <div id="popup" role="dialog" aria-modal="true" aria-label="Pop-up">
@@ -361,6 +401,9 @@
     const startOverlay = document.getElementById('startOverlay');
     const startBtn = document.getElementById('startBtn');
 
+    const centerButtonOverlay = document.getElementById('centerButtonOverlay');
+    const centerButton = document.getElementById('centerButton');
+
     const popupOverlay = document.getElementById('popupOverlay');
     const popupTitle = document.getElementById('popupTitle');
     const popupText = document.getElementById('popupText');
@@ -501,27 +544,35 @@
     }
 
     function playMain(n){
-      mainIndex = n;
+  mainIndex = n;
 
-      loadVideoSrc(mainFile(n), {
-        loop: false,
-        onEnded: () => {
-          playIdleLoop();
-        }
-      });
+  let onEnded = () => {
+    playIdleLoop();
+  };
 
-      if (n === 27) {
-        delayedPopupTimer = setTimeout(() => {
-          showBackToStartOnly();
-        }, END_POPUP_DELAY);
-      } else if (n === 28) {
-        delayedPopupTimer = setTimeout(() => {
-          showConfirmEndPopup();
-        }, END_POPUP_DELAY);
-      } else if (n === 1) {
-        resetConversationStates();
-      }
-    }
+  if (n === 27) {
+    onEnded = () => {
+      playIdleLoop();
+      showBackToStartOnly();
+    };
+  } else if (n === 28) {
+    onEnded = () => {
+      playIdleLoop();
+      delayedPopupTimer = setTimeout(() => {
+        showConfirmEndPopup();
+      }, END_POPUP_DELAY);
+    };
+  }
+
+  loadVideoSrc(mainFile(n), {
+    loop: false,
+    onEnded
+  });
+
+  if (n === 1) {
+    resetConversationStates();
+  }
+}
 
     function playSpecial(id){
       const src = SPECIAL_VIDEOS[id];
@@ -538,10 +589,37 @@
     /********************************************************************
      * Popup system
      ********************************************************************/
-    function openPopup({title, text, actions=[]}){
-      popupTitle.textContent = title ?? 'Hinweis';
-      popupText.textContent = text ?? '';
-      popupActions.innerHTML = '';
+    function showCenterButton(text, onClick){
+  centerButton.textContent = text;
+  centerButton.onclick = onClick;
+  centerButtonOverlay.classList.add('show');
+  centerButtonOverlay.setAttribute('aria-hidden', 'false');
+  hideInputPanel();
+
+  setTimeout(() => {
+    centerButton.focus();
+  }, 0);
+}
+
+function closeCenterButton(){
+  centerButtonOverlay.classList.remove('show');
+  centerButtonOverlay.setAttribute('aria-hidden', 'true');
+  centerButton.onclick = null;
+}
+
+function isBlockingOverlayOpen(){
+  return popupOverlay.classList.contains('show') ||
+         centerButtonOverlay.classList.contains('show') ||
+         startOverlay.style.display !== 'none';
+}
+    
+    
+   function openPopup({title, text, actions=[]}){
+  hideInputPanel();
+
+  popupTitle.textContent = title ?? 'Hinweis';
+  popupText.textContent = text ?? '';
+  popupActions.innerHTML = '';
 
       actions.forEach(a => {
         const b = document.createElement('button');
@@ -564,14 +642,11 @@
       popupOverlay.classList.remove('show');
       popupOverlay.setAttribute('aria-hidden', 'true');
       popupActions.innerHTML = '';
+      showInputPanel();
       if (inputPanel.style.display !== 'none') {
         setTimeout(() => input.focus(), 0);
       }
     }
-
-    popupOverlay.addEventListener('click', (e) => {
-      if (e.target === popupOverlay) closePopup();
-    });
 
     function maybeShowNthPopup(){
   if (POPUP_EVERY_N <= 0) return;
@@ -660,14 +735,11 @@
     }
 
     function showBackToStartOnly(){
-      openPopup({
-        title: '',
-        text: '',
-        actions: [
-          { text: BACK_TO_START_BUTTON_TEXT, onClick: () => { closePopup(); playMain(1); } }
-        ]
-      });
-    }
+  showCenterButton(BACK_TO_START_BUTTON_TEXT, () => {
+    closeCenterButton();
+    playMain(1);
+  });
+}
 
     function resetConversationStates(){
       inPremiumFlow = false;
@@ -683,8 +755,9 @@
     /********************************************************************
      * Main advance logic
      ********************************************************************/
-    function advance(){
-      if (inPremiumFlow) return;
+   function advance(){
+  if (inPremiumFlow) return;
+  if (isBlockingOverlayOpen()) return;
 
       const raw = input.value || '';
       const trimmed = raw.trim();
