@@ -193,14 +193,23 @@
   margin: 0;
   text-align: center;
 }
-    #popupActions{ display:flex; gap:10px; justify-content:flex-end; margin-top: 14px; }
+    #popupActions{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  margin-top: 14px;
+}
     #popupActions button{ padding: 10px 12px; }
 
     @media (max-width: 520px){
-      .panel{ flex-direction:column; align-items:stretch; }
-      .actions{ justify-content:space-between; }
-      #popupActions{ justify-content:stretch; flex-direction:column; }
-    }
+  .panel{ flex-direction:column; align-items:stretch; }
+  .actions{ justify-content:space-between; }
+  #popupActions{
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+  }
+}
   </style>
 </head>
 
@@ -736,39 +745,46 @@ function includesAnyKeyword(text, keywords){
   }
 
   function playMain(n){
-    mainIndex = n;
-    lastNarrativePlayback = { type: 'main', value: n };
+  mainIndex = n;
+  lastNarrativePlayback = { type: 'main', value: n };
 
-    let onEnded = () => {
-      playIdleLoop();
-    };
-
-    if (n === 27) {
-      onEnded = () => {
-        playIdleLoop();
-        showBackToStartOnly();
-      };
-    } else if (n === 28) {
-      onEnded = () => {
-        playIdleLoop();
-        showConfirmEndPopup();
-      };
-    } else if (n === 29) {
-      onEnded = () => {
-        playIdleLoop();
-        showBackToStartOnly();
-      };
-    }
-
-    loadVideoSrc(mainFile(n), {
-      loop: false,
-      onEnded
-    });
-
-    if (n === 1) {
-      resetConversationStates();
-    }
+  // Eingabefeld bei den End-/Premium-Videos direkt ausblenden
+  if (n === 26 ||n === 27 || n === 28 || n === 29) {
+    hideInputPanel();
+  } else {
+    showInputPanel();
   }
+
+  let onEnded = () => {
+    playIdleLoop();
+  };
+
+  if (n === 27) {
+    onEnded = () => {
+      playIdleLoop();
+      showBackToStartOnly();
+    };
+  } else if (n === 28) {
+    onEnded = () => {
+      playIdleLoop();
+      showConfirmEndPopup();
+    };
+  } else if (n === 29) {
+    onEnded = () => {
+      playIdleLoop();
+      showBackToStartOnly();
+    };
+  }
+
+  loadVideoSrc(mainFile(n), {
+    loop: false,
+    onEnded
+  });
+
+  if (n === 1) {
+    resetConversationStates();
+  }
+}
 
   function playSpecial(id){
     const src = SPECIAL_VIDEOS[id];
