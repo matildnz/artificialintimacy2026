@@ -749,39 +749,27 @@
     }
 
     muteBtn.addEventListener('click', () => setAudioEnabled(!audioEnabled));
-    submitBtn.addEventListener('click', advance);
+submitBtn.addEventListener('click', advance);
 
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        advance();
-      }
-    });
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    advance();
+  }
+});
 
-    startBtn.addEventListener('click', () => {
-      setAudioEnabled(true);
-      startOverlay.style.display = 'none';
-      input.focus();
-    });
-
-    window.addEventListener('pointerdown', () => {
-      if (startOverlay.style.display !== 'none') {
-        setAudioEnabled(true);
-        startOverlay.style.display = 'none';
-        input.focus();
-      }
-    }, { once: true });
-
-    /********************************************************************
-     * Boot 
-     ********************************************************************/
-    setAudioEnabled(false);
-    startBtn.addEventListener('click', () => {
+startBtn.addEventListener('click', () => {
   setAudioEnabled(true);
   startOverlay.style.display = 'none';
   playMain(MAIN_MIN);
   input.focus();
 });
+
+/********************************************************************
+ * Boot
+ ********************************************************************/
+setAudioEnabled(false);
+    
   </script>
 </body>
 </html>
