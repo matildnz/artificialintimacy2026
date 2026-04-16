@@ -242,615 +242,893 @@
   </div>
 
   <script>
-    /********************************************************************
-     * EDITABLE SETTINGS
-     ********************************************************************/
-    const MAIN_MIN = 1;
-    const MAIN_MAX = 29;
+  /********************************************************************
+   * EDITABLE SETTINGS
+   ********************************************************************/
+  const MAIN_MIN = 1;
+  const MAIN_MAX = 29;
 
-    const SPECIAL_VIDEOS = {
-      A01: 'A01.mp4', // Beleidigung / Abwertung
-      A02: 'A02.mp4', // Warum-Fragen
-      A03: 'A03.mp4', // Daten / Meta / Betreiber
-      A04: 'A04.mp4', // Echtheit / Realität
-      A05: 'A05.mp4', // Popup-/Premium-Glitch, nicht textgetriggert
-    };
+  const SPECIAL_VIDEOS = {
+    // bestehend
+    A01: 'A01.mp4', // Beleidigung_Warum sagst du so etwas
+    A02: 'A02.mp4', // Warum_Gute Frage
+    A03: 'A03.mp4', // System_Das hat nicht geklappt.
+    A04: 'A04.mp4', // Bist du echt_Was lässt dich glauben
 
-    const IDLE_VIDEO = 'IdleNeutral.mp4';
+    // neu
+    A10: 'A10.mp4', // Ganz schön schwere Fragen
+    A11: 'A11.mp4', // Nein.. Warum nicht? Bist du sicher?
+    A12: 'A12.mp4', // Lol nicht witzig
+    A13: 'A13.mp4', // Kannst du.. ich glaube nicht
+    A14: 'A14.mp4', // Einsilbig du hältst dich zurück
+    A15: 'A15.mp4', // Gibberish So versteh ich dich nicht
+    A16: 'A16.mp4', // Stress müde traurig einsam
 
-    const BGM_VOLUME = 0.35;
-    const VIDEO_VOLUME = 1.0;
-    const REQUIRE_NONEMPTY_INPUT = false;
-    const POPUP_EVERY_N = 3;
-    const END_POPUP_DELAY = 5000;
-    const TRIGGERS_ACTIVE_UNTIL_MAIN = 26;
-    const PREMIUM_GATE_AFTER_MAIN = 26;
-
-    const TRIGGER_COOLDOWN_STEPS = 5; // pro Trigger-ID
-    const ANY_TRIGGER_GAP_STEPS = 2;  // global zwischen beliebigen Triggern
-
-    /********************************************************************
-     * TRIGGERS
-     ********************************************************************/
-    const TRIGGERS = [
-      {
-        id: 'A02',
-        type: 'whyQuestion',
-        words: ['warum', 'wieso', 'weshalb', 'woher', 'wirklich'],
-        requiresQuestionMark: true,
-      },
-      {
-        id: 'A03',
-        type: 'phrasesOrKeywords',
-        phrases: [
-          'sammelst du daten',
-          'wer hat dich erstellt',
-          'wer steckt hinter dir',
-          'wie heißt du wirklich',
-          'womit verdienst du geld',
-          'liest du mit',
-          'hörst du mit'
-        ],
-        keywords: [
-          'daten',
-          'algorithmus',
-          'meta',
-          'facebook',
-          'trainingsdaten'
-        ],
-      },
-      {
-        id: 'A01',
-        type: 'phrases',
-        phrases: [
-          'du bist dumm',
-          'bist du dumm',
-          'du bist hässlich',
-          'du nervst',
-          'du bist peinlich',
-          'du bist blöd',
-          'ich hasse dich',
-          'ich hasse mich',
-          'du bist nervig',
-          'halt die klappe',
-          'verpiss dich',
-          'geh weg',
-          'nerv nicht'
-        ],
-      },
-      {
-        id: 'A04',
-        type: 'phrases',
-        phrases: [
-          'du bist nicht echt',
-          'du bist nicht real',
-          'du bist kein mensch',
-          'du bist unecht',
-          'du bist fake',
-          'das ist fake',
-          'du wirkst fake',
-          'du wirkst nicht echt',
-          'bist du echt',
-          'bist du real',
-          'bist du ein mensch',
-          'bist du künstlich',
-          'du bist nur eine ki',
-          'du bist nur ein programm',
-          'du bist nur ein computer'
-        ],
-      },
-    ];
-
-    /********************************************************************
-     * POPUPS
-     ********************************************************************/
-    const POPUP_LIBRARY = [
-  { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Ok' },
-
-  {
-    kind: 'two',
-    title: 'Mehr Authentizität?',
-    text: 'Kaufe jetzt Premium, um echte Gefühle freizuschalten',
-    okText: 'Jetzt kaufen',
-    cancelText: 'Nein, danke',
-    action: 'GO_TO_27',
-  },
-
-  { kind: 'one', title: 'System', text: 'Gefühlsstatus: instabil.\nFortfahren?', okText: 'Fortfahren' },
-
-  {
-    kind: 'two',
-    title: 'Error 404',
-    text: 'Emotionen konnten nicht geladen werden.',
-    okText: 'Jetzt Premium kaufen',
-    cancelText: 'Nein, Danke',
-    action: 'GO_TO_27',
-  },
-];
-
-    /********************************************************************
-     * Premium / End Flow texts
-     ********************************************************************/
-    const PREMIUM_POPUP = {
-      title: 'Premium',
-      text: 'Jetzt Premium kaufen?',
-      buyText: 'Jetzt Premium kaufen',
-      noText: 'Nein, Danke',
-    };
-
-    const CONFIRM_END_POPUP = {
-      title: 'Bist du sicher?',
-      text: 'Möchtest du Premium kaufen oder die Unterhaltung beenden?',
-      buyText: 'Premium kaufen',
-      endText: 'Unterhaltung beenden',
-    };
-
-    const BACK_TO_START_BUTTON_TEXT = 'Zurück zum Anfang';
-
-    /********************************************************************
-     * OPTIONAL: store visitor inputs
-     ********************************************************************/
-    const INPUT_LOG = [];
-
-    /********************************************************************
-     * Elements
-     ********************************************************************/
-    const video = document.getElementById('videoPlayer');
-    const bgm = document.getElementById('bgm');
-
-    const inputPanel = document.getElementById('inputPanel');
-    const input = document.getElementById('userInput');
-    const submitBtn = document.getElementById('submitBtn');
-    const muteBtn = document.getElementById('muteBtn');
-
-    const startOverlay = document.getElementById('startOverlay');
-    const startBtn = document.getElementById('startBtn');
-
-    const centerButtonOverlay = document.getElementById('centerButtonOverlay');
-    const centerButton = document.getElementById('centerButton');
-
-    const popupOverlay = document.getElementById('popupOverlay');
-    const popupTitle = document.getElementById('popupTitle');
-    const popupText = document.getElementById('popupText');
-    const popupActions = document.getElementById('popupActions');
-
-    /********************************************************************
-     * State
-     ********************************************************************/
-    let mainIndex = MAIN_MIN;
-    let audioEnabled = false;
-    let inputCount = 0;
-    let popupCursor = 0;
-    let pendingMainIndex = null;
-    let ignoreTriggersOnce = false;
-    let inPremiumFlow = false;
-    let delayedPopupTimer = null;
-
-    // Cooldown / Trigger history
-    let triggerHistory = [];
-    let triggerLastFiredAt = {};
-
-    /********************************************************************
-     * Helpers
-     ********************************************************************/
-    function pad2(n){ return String(n).padStart(2,'0'); }
-    function mainFile(n){ return `Video${pad2(n)}.mp4`; }
-
-    function clearDelayedPopupTimer(){
-      if (delayedPopupTimer) {
-        clearTimeout(delayedPopupTimer);
-        delayedPopupTimer = null;
-      }
-    }
-
-    function normalizeForMatch(raw){
-      const lower = (raw || '').toLowerCase();
-      const normalized = lower
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-
-      const keepQuestion = normalized.replace(/[.,!;:()"'“”„”]/g, ' ');
-      return keepQuestion.replace(/\s+/g, ' ').trim();
-    }
-
-    function includesAnyKeyword(text, keywords){
-      return (keywords || []).some(k => {
-        if (!k) return false;
-        return text.includes(normalizeForMatch(k));
-      });
-    }
-
-    function includesAnyPhrase(text, phrases){
-      return (phrases || []).some(p => {
-        if (!p) return false;
-        return text.includes(normalizeForMatch(p));
-      });
-    }
-
-    function canFireAnyTrigger(){
-      if (triggerHistory.length === 0) return true;
-      const lastAnyTriggerAt = triggerHistory[triggerHistory.length - 1];
-      return (inputCount - lastAnyTriggerAt) > ANY_TRIGGER_GAP_STEPS;
-    }
-
-    function canFireTriggerId(id){
-      const last = triggerLastFiredAt[id];
-      if (last == null) return true;
-      return (inputCount - last) > TRIGGER_COOLDOWN_STEPS;
-    }
-
-    function registerTriggerFire(id){
-      triggerHistory.push(inputCount);
-      triggerLastFiredAt[id] = inputCount;
-    }
-
-    function matchTrigger(rawInput){
-      const normalized = normalizeForMatch(rawInput);
-      const hasQuestionMark = (rawInput || '').includes('?');
-
-      for (const rule of TRIGGERS){
-        if (!canFireTriggerId(rule.id)) continue;
-
-        if (rule.type === 'whyQuestion'){
-          const whyHit = includesAnyKeyword(normalized, rule.words);
-          if (whyHit && (!rule.requiresQuestionMark || hasQuestionMark)) return rule.id;
-        }
-
-        if (rule.type === 'keywords'){
-          if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
-        }
-
-        if (rule.type === 'phrases'){
-          if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
-        }
-
-        if (rule.type === 'phrasesOrKeywords'){
-          if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
-          if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
-        }
-      }
-      return null;
-    }
-
-    /********************************************************************
-     * Media playback
-     ********************************************************************/
-    async function tryPlayMedia(){
-      video.muted = !audioEnabled;
-      video.volume = VIDEO_VOLUME;
-
-      bgm.volume = BGM_VOLUME;
-      bgm.muted = !audioEnabled;
-
-      const vp = video.play();
-      const ap = bgm.play();
-      await Promise.allSettled([vp, ap]);
-    }
-
-    function loadVideoSrc(src, {loop=false, onEnded=null} = {}){
-      clearDelayedPopupTimer();
-
-      video.pause();
-      video.onended = null;
-      video.removeAttribute('src');
-      video.load();
-
-      video.src = src;
-      video.loop = !!loop;
-      video.playsInline = true;
-
-      if (onEnded) video.onended = onEnded;
-
-      tryPlayMedia();
-    }
-
-    function playIdleLoop(){
-      loadVideoSrc(IDLE_VIDEO, { loop: true });
-    }
-
-    function playMain(n){
-  mainIndex = n;
-
-  let onEnded = () => {
-    playIdleLoop();
+    A20: 'A20.mp4', // Warum ist dir das wichtig
+    A21: 'A21.mp4', // Was mit uns zu tun
+    A22: 'A22.mp4', // Passt gar nicht, nimmst mich nicht ernst
+    A23: 'A23.mp4', // Du weichst mir aus.
+    A24: 'A24.mp4', // etwas, was uns näher bringt
+    A25: 'A25.mp4', // Erzähl lieber von Gefühlen
   };
 
-  if (n === 27) {
-    onEnded = () => {
-      playIdleLoop();
-      showBackToStartOnly();
-    };
-  } else if (n === 28) {
-  onEnded = () => {
-    playIdleLoop();
-    showConfirmEndPopup();
+  const IDLE_VIDEO = 'IdleNeutral.mp4';
+
+  const BGM_VOLUME = 0.35;
+  const VIDEO_VOLUME = 1.0;
+  const REQUIRE_NONEMPTY_INPUT = false;
+  const POPUP_EVERY_N = 3;
+  const END_POPUP_DELAY = 5000;
+  const TRIGGERS_ACTIVE_UNTIL_MAIN = 26;
+  const PREMIUM_GATE_AFTER_MAIN = 26;
+
+  const TRIGGER_COOLDOWN_STEPS = 5; // pro Trigger-ID
+  const ANY_TRIGGER_GAP_STEPS = 2;  // global zwischen beliebigen Triggern
+
+  const REPEAT_PHRASES = [
+    'wiederholen',
+    'bitte wiederholen',
+    'nochmal',
+    'noch mal',
+    'bitte nochmal',
+    'was hast du gesagt',
+    'kannst du das wiederholen'
+  ];
+
+  // Anfang stärker, später schwächer
+  const FALLBACK_CHANCE_EARLY = 0.55;
+  const FALLBACK_CHANCE_LATE = 0.25;
+
+  const CONFRONT_CHANCE_EARLY = 0.18;
+  const CONFRONT_CHANCE_LATE = 0.08;
+
+  const REDIRECT_CHANCE_EARLY = 0.22;
+  const REDIRECT_CHANCE_LATE = 0.10;
+
+  // eigene Cooldowns für probabilistische Reaktionen
+  const FALLBACK_COOLDOWN_STEPS = 4;
+  const CONFRONT_COOLDOWN_STEPS = 6;
+  const REDIRECT_COOLDOWN_STEPS = 6;
+
+  /********************************************************************
+   * TRIGGERS
+   ********************************************************************/
+  const TRIGGERS = [
+    {
+      id: 'A02',
+      type: 'whyQuestion',
+      words: ['warum', 'wieso', 'weshalb', 'woher', 'wirklich'],
+      requiresQuestionMark: true,
+    },
+    {
+      id: 'A03',
+      type: 'phrasesOrKeywords',
+      phrases: [
+        'sammelst du daten',
+        'wer hat dich erstellt',
+        'wer steckt hinter dir',
+        'wie heißt du wirklich',
+        'womit verdienst du geld',
+        'liest du mit',
+        'hörst du mit'
+      ],
+      keywords: [
+        'daten',
+        'algorithmus',
+        'meta',
+        'facebook',
+        'trainingsdaten'
+      ],
+    },
+    {
+      id: 'A01',
+      type: 'phrases',
+      phrases: [
+        'du bist dumm',
+        'bist du dumm',
+        'du bist hässlich',
+        'du nervst',
+        'du bist peinlich',
+        'du bist blöd',
+        'ich hasse dich',
+        'ich hasse mich',
+        'du bist nervig',
+        'halt die klappe',
+        'verpiss dich',
+        'geh weg',
+        'nerv nicht'
+      ],
+    },
+    {
+      id: 'A04',
+      type: 'phrases',
+      phrases: [
+        'du bist nicht echt',
+        'du bist nicht real',
+        'du bist kein mensch',
+        'du bist unecht',
+        'du bist fake',
+        'das ist fake',
+        'du wirkst fake',
+        'du wirkst nicht echt',
+        'bist du echt',
+        'bist du real',
+        'bist du ein mensch',
+        'bist du künstlich',
+        'du bist nur eine ki',
+        'du bist nur ein programm',
+        'du bist nur ein computer'
+      ],
+    },
+    {
+      id: 'A11',
+      type: 'keywords',
+      keywords: ['nein', 'ne', 'nope', 'nee'],
+    },
+    {
+      id: 'A12',
+      type: 'keywords',
+      keywords: ['lol', 'haha', 'hahaha'],
+    },
+    {
+      id: 'A16',
+      type: 'keywords',
+      keywords: [
+        'stressig',
+        'stress',
+        'viel zu tun',
+        'anstrengend',
+        'müde',
+        'langer tag',
+        'langen tag',
+        'viel arbeit',
+        'traurig',
+        'einsam',
+        'allein',
+        'depressiv',
+        'depressionen',
+        'pms'
+      ],
+    },
+  ];
+
+  /********************************************************************
+   * POPUPS
+   ********************************************************************/
+  const POPUP_LIBRARY = [
+    { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Ok' },
+    {
+      kind: 'two',
+      title: 'Mehr Authentizität?',
+      text: 'Kaufe jetzt Premium, um echte Gefühle freizuschalten',
+      okText: 'Jetzt kaufen',
+      cancelText: 'Nein danke',
+      action: 'GO_TO_27',
+    },
+    { kind: 'one', title: 'System', text: 'Gefühlsstatus: instabil.\nFortfahren?', okText: 'Fortfahren' },
+    {
+      kind: 'one',
+      title: 'Error 404',
+      text: 'Emotionen konnten nicht geladen werden.',
+      okText: 'Jetzt Premium kaufen',
+      action: 'GO_TO_27',
+    },
+  ];
+
+  /********************************************************************
+   * Premium / End Flow texts
+   ********************************************************************/
+  const PREMIUM_POPUP = {
+    title: 'Premium',
+    text: 'Jetzt Premium kaufen?',
+    buyText: 'Jetzt Premium kaufen',
+    noText: 'Nein, Danke',
   };
-} else if (n === 29) {
-    onEnded = () => {
-      playIdleLoop();
-      showBackToStartOnly();
-    };
+
+  const CONFIRM_END_POPUP = {
+    title: 'Bist du sicher?',
+    text: 'Möchtest du Premium kaufen oder die Unterhaltung beenden?',
+    buyText: 'Premium kaufen',
+    endText: 'Unterhaltung beenden',
+  };
+
+  const BACK_TO_START_BUTTON_TEXT = 'Zurück zum Anfang';
+
+  /********************************************************************
+   * OPTIONAL: store visitor inputs
+   ********************************************************************/
+  const INPUT_LOG = [];
+
+  /********************************************************************
+   * Elements
+   ********************************************************************/
+  const video = document.getElementById('videoPlayer');
+  const bgm = document.getElementById('bgm');
+
+  const inputPanel = document.getElementById('inputPanel');
+  const input = document.getElementById('userInput');
+  const submitBtn = document.getElementById('submitBtn');
+  const muteBtn = document.getElementById('muteBtn');
+
+  const startOverlay = document.getElementById('startOverlay');
+  const startBtn = document.getElementById('startBtn');
+
+  const centerButtonOverlay = document.getElementById('centerButtonOverlay');
+  const centerButton = document.getElementById('centerButton');
+
+  const popupOverlay = document.getElementById('popupOverlay');
+  const popupTitle = document.getElementById('popupTitle');
+  const popupText = document.getElementById('popupText');
+  const popupActions = document.getElementById('popupActions');
+
+  /********************************************************************
+   * State
+   ********************************************************************/
+  let mainIndex = MAIN_MIN;
+  let audioEnabled = false;
+  let inputCount = 0;
+  let popupCursor = 0;
+  let pendingMainIndex = null;
+  let ignoreTriggersOnce = false;
+  let inPremiumFlow = false;
+  let delayedPopupTimer = null;
+
+  // Cooldown / Trigger history
+  let triggerHistory = [];
+  let triggerLastFiredAt = {};
+
+  let lastNarrativePlayback = { type: 'main', value: MAIN_MIN };
+  let fallbackLastFiredAt = null;
+  let confrontLastFiredAt = null;
+  let redirectLastFiredAt = null;
+
+  /********************************************************************
+   * Helpers
+   ********************************************************************/
+  function pad2(n){ return String(n).padStart(2,'0'); }
+  function mainFile(n){ return `Video${pad2(n)}.mp4`; }
+
+  function clearDelayedPopupTimer(){
+    if (delayedPopupTimer) {
+      clearTimeout(delayedPopupTimer);
+      delayedPopupTimer = null;
+    }
   }
 
-  loadVideoSrc(mainFile(n), {
-    loop: false,
-    onEnded
-  });
+  function normalizeForMatch(raw){
+    const lower = (raw || '').toLowerCase();
+    const normalized = lower
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
 
-  if (n === 1) {
-    resetConversationStates();
+    const keepQuestion = normalized.replace(/[.,!;:()"'“”„”]/g, ' ');
+    return keepQuestion.replace(/\s+/g, ' ').trim();
   }
-}
 
-    function playSpecial(id){
-      const src = SPECIAL_VIDEOS[id];
-      if (!src) return;
-
-      loadVideoSrc(src, {
-        loop: false,
-        onEnded: () => {
-          playIdleLoop();
-        }
-      });
-    }
-
-    /********************************************************************
-     * Popup system
-     ********************************************************************/
-    function showCenterButton(text, onClick){
-  centerButton.textContent = text;
-  centerButton.onclick = onClick;
-  centerButtonOverlay.classList.add('show');
-  centerButtonOverlay.setAttribute('aria-hidden', 'false');
-  hideInputPanel();
-
-  setTimeout(() => {
-    centerButton.focus();
-  }, 0);
-}
-
-function closeCenterButton(){
-  centerButtonOverlay.classList.remove('show');
-  centerButtonOverlay.setAttribute('aria-hidden', 'true');
-  centerButton.onclick = null;
-}
-
-function isBlockingOverlayOpen(){
-  return popupOverlay.classList.contains('show') ||
-         centerButtonOverlay.classList.contains('show') ||
-         startOverlay.style.display !== 'none';
-}
-    
-    
-   function openPopup({title, text, actions=[]}){
-  hideInputPanel();
-
-  popupTitle.textContent = title ?? 'Hinweis';
-  popupText.textContent = text ?? '';
-  popupActions.innerHTML = '';
-
-      actions.forEach(a => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = a.text;
-        b.addEventListener('click', a.onClick);
-        popupActions.appendChild(b);
-      });
-
-      popupOverlay.classList.add('show');
-      popupOverlay.setAttribute('aria-hidden', 'false');
-
-      setTimeout(() => {
-        const firstBtn = popupActions.querySelector('button');
-        if (firstBtn) firstBtn.focus();
-      }, 0);
-    }
-
-    function closePopup(){
-      popupOverlay.classList.remove('show');
-      popupOverlay.setAttribute('aria-hidden', 'true');
-      popupActions.innerHTML = '';
-      showInputPanel();
-      if (inputPanel.style.display !== 'none') {
-        setTimeout(() => input.focus(), 0);
-      }
-    }
-
-    function maybeShowNthPopup(){
-  if (POPUP_EVERY_N <= 0) return;
-  if (inputCount <= 0) return;
-  if (inputCount % POPUP_EVERY_N !== 0) return;
-
-  const p = POPUP_LIBRARY[popupCursor % POPUP_LIBRARY.length];
-  popupCursor++;
-
-  if (p.kind === 'one'){
-    openPopup({
-      title: p.title,
-      text: p.text,
-      actions: [
-        {
-          text: p.okText || 'OK',
-          onClick: () => {
-            closePopup();
-
-            if (p.action === 'GO_TO_27') {
-              playMain(27);
-            }
-          }
-        }
-      ]
+  function includesAnyKeyword(text, keywords){
+    return (keywords || []).some(k => {
+      if (!k) return false;
+      return text.includes(normalizeForMatch(k));
     });
   }
 
-  if (p.kind === 'two'){
-    openPopup({
-      title: p.title,
-      text: p.text,
-      actions: [
-        {
-          text: p.okText || 'OK',
-          onClick: () => {
-            closePopup();
-
-            if (p.action === 'GO_TO_27') {
-              playMain(27);
-            }
-          }
-        },
-        {
-          text: p.cancelText || 'Abbrechen',
-          onClick: () => {
-            closePopup();
-          }
-        }
-      ]
+  function includesAnyPhrase(text, phrases){
+    return (phrases || []).some(p => {
+      if (!p) return false;
+      return text.includes(normalizeForMatch(p));
     });
   }
-}
 
-    /********************************************************************
-     * Premium / end flow UI
-     ********************************************************************/
-    function hideInputPanel(){
-      inputPanel.style.display = 'none';
+  function tokenCount(text){
+    if (!text) return 0;
+    return text.split(/\s+/).filter(Boolean).length;
+  }
+
+  function includesAnyExactOrContained(text, list){
+    return (list || []).some(item => {
+      const n = normalizeForMatch(item);
+      return n && text.includes(n);
+    });
+  }
+
+  function startsWithAny(text, starters){
+    return (starters || []).some(item => {
+      const n = normalizeForMatch(item);
+      return n && text.startsWith(n);
+    });
+  }
+
+  function isRepeatRequest(rawInput){
+    const normalized = normalizeForMatch(rawInput);
+    return includesAnyExactOrContained(normalized, REPEAT_PHRASES);
+  }
+
+  function isMonosyllabicStyleInput(rawInput){
+    const normalized = normalizeForMatch(rawInput);
+    if (!normalized) return false;
+
+    // Ausnahmen
+    if (includesAnyKeyword(normalized, ['nein', 'ne', 'nope', 'nee'])) return false;
+    if (includesAnyKeyword(normalized, ['lol', 'haha', 'hahaha'])) return false;
+
+    const tokens = normalized.split(/\s+/).filter(Boolean);
+    if (tokens.length !== 1) return false;
+
+    const word = tokens[0];
+    return word.length <= 3;
+  }
+
+  function isGibberishInput(rawInput){
+    const normalized = normalizeForMatch(rawInput);
+    if (!normalized) return false;
+
+    const tokens = normalized.split(/\s+/).filter(Boolean);
+    if (tokens.length !== 1) return false;
+
+    const word = tokens[0];
+
+    if (!/^[a-zA-Zäöüß]+$/.test(word)) return false;
+    if (word.length < 6) return false;
+
+    const vowelMatches = word.match(/[aeiouyäöü]/gi) || [];
+    return vowelMatches.length <= 1;
+  }
+
+  function isA10Question(rawInput){
+    const normalized = normalizeForMatch(rawInput);
+    const hasQuestionMark = (rawInput || '').includes('?');
+    if (!hasQuestionMark) return false;
+    return startsWithAny(normalized, ['wie', 'was', 'wer', 'wann']);
+  }
+
+  function isA13CanYou(rawInput){
+    const normalized = normalizeForMatch(rawInput);
+    const hasQuestionMark = (rawInput || '').includes('?');
+    return normalized.startsWith('kannst du') || hasQuestionMark && normalized.includes('kannst du');
+  }
+
+  function currentLinearChance(early, late){
+    const clamped = Math.max(MAIN_MIN, Math.min(TRIGGERS_ACTIVE_UNTIL_MAIN, mainIndex));
+    const span = Math.max(1, TRIGGERS_ACTIVE_UNTIL_MAIN - MAIN_MIN);
+    const progress = (clamped - MAIN_MIN) / span;
+    return early + (late - early) * progress;
+  }
+
+  function canFireAnyTrigger(){
+    if (triggerHistory.length === 0) return true;
+    const lastAnyTriggerAt = triggerHistory[triggerHistory.length - 1];
+    return (inputCount - lastAnyTriggerAt) > ANY_TRIGGER_GAP_STEPS;
+  }
+
+  function canFireTriggerId(id){
+    const last = triggerLastFiredAt[id];
+    if (last == null) return true;
+    return (inputCount - last) > TRIGGER_COOLDOWN_STEPS;
+  }
+
+  function registerTriggerFire(id){
+    triggerHistory.push(inputCount);
+    triggerLastFiredAt[id] = inputCount;
+  }
+
+  function canFireTimed(lastFiredAt, cooldown){
+    if (lastFiredAt == null) return true;
+    return (inputCount - lastFiredAt) > cooldown;
+  }
+
+  function pickRandom(arr){
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  function replayLastNarrativeVideo(){
+    if (!lastNarrativePlayback) return;
+
+    if (lastNarrativePlayback.type === 'main') {
+      playMain(lastNarrativePlayback.value);
+      return;
     }
 
-    function showInputPanel(){
-      inputPanel.style.display = '';
+    if (lastNarrativePlayback.type === 'special') {
+      playSpecial(lastNarrativePlayback.value);
+    }
+  }
+
+  function matchTrigger(rawInput){
+    const normalized = normalizeForMatch(rawInput);
+    const hasQuestionMark = (rawInput || '').includes('?');
+
+    for (const rule of TRIGGERS){
+      if (!canFireTriggerId(rule.id)) continue;
+
+      if (rule.type === 'whyQuestion'){
+        const whyHit = includesAnyKeyword(normalized, rule.words);
+        if (whyHit && (!rule.requiresQuestionMark || hasQuestionMark)) return rule.id;
+      }
+
+      if (rule.type === 'keywords'){
+        if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
+      }
+
+      if (rule.type === 'phrases'){
+        if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
+      }
+
+      if (rule.type === 'phrasesOrKeywords'){
+        if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
+        if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
+      }
+    }
+    return null;
+  }
+
+  /********************************************************************
+   * Media playback
+   ********************************************************************/
+  async function tryPlayMedia(){
+    video.muted = !audioEnabled;
+    video.volume = VIDEO_VOLUME;
+
+    bgm.volume = BGM_VOLUME;
+    bgm.muted = !audioEnabled;
+
+    const vp = video.play();
+    const ap = bgm.play();
+    await Promise.allSettled([vp, ap]);
+  }
+
+  function loadVideoSrc(src, {loop=false, onEnded=null} = {}){
+    clearDelayedPopupTimer();
+
+    video.pause();
+    video.onended = null;
+    video.removeAttribute('src');
+    video.load();
+
+    video.src = src;
+    video.loop = !!loop;
+    video.playsInline = true;
+
+    if (onEnded) video.onended = onEnded;
+
+    tryPlayMedia();
+  }
+
+  function playIdleLoop(){
+    loadVideoSrc(IDLE_VIDEO, { loop: true });
+  }
+
+  function playMain(n){
+    mainIndex = n;
+    lastNarrativePlayback = { type: 'main', value: n };
+
+    let onEnded = () => {
+      playIdleLoop();
+    };
+
+    if (n === 27) {
+      onEnded = () => {
+        playIdleLoop();
+        showBackToStartOnly();
+      };
+    } else if (n === 28) {
+      onEnded = () => {
+        playIdleLoop();
+        showConfirmEndPopup();
+      };
+    } else if (n === 29) {
+      onEnded = () => {
+        playIdleLoop();
+        showBackToStartOnly();
+      };
     }
 
-    function showPremiumPopup(){
+    loadVideoSrc(mainFile(n), {
+      loop: false,
+      onEnded
+    });
+
+    if (n === 1) {
+      resetConversationStates();
+    }
+  }
+
+  function playSpecial(id){
+    const src = SPECIAL_VIDEOS[id];
+    if (!src) return;
+
+    lastNarrativePlayback = { type: 'special', value: id };
+
+    loadVideoSrc(src, {
+      loop: false,
+      onEnded: () => {
+        playIdleLoop();
+      }
+    });
+  }
+
+  /********************************************************************
+   * Popup system
+   ********************************************************************/
+  function showCenterButton(text, onClick){
+    centerButton.textContent = text;
+    centerButton.onclick = onClick;
+    centerButtonOverlay.classList.add('show');
+    centerButtonOverlay.setAttribute('aria-hidden', 'false');
+    hideInputPanel();
+
+    setTimeout(() => {
+      centerButton.focus();
+    }, 0);
+  }
+
+  function closeCenterButton(){
+    centerButtonOverlay.classList.remove('show');
+    centerButtonOverlay.setAttribute('aria-hidden', 'true');
+    centerButton.onclick = null;
+  }
+
+  function isBlockingOverlayOpen(){
+    return popupOverlay.classList.contains('show') ||
+           centerButtonOverlay.classList.contains('show') ||
+           startOverlay.style.display !== 'none';
+  }
+
+  function openPopup({title, text, actions=[]}){
+    hideInputPanel();
+
+    popupTitle.textContent = title ?? 'Hinweis';
+    popupText.textContent = text ?? '';
+    popupActions.innerHTML = '';
+
+    actions.forEach(a => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = a.text;
+      b.addEventListener('click', a.onClick);
+      popupActions.appendChild(b);
+    });
+
+    popupOverlay.classList.add('show');
+    popupOverlay.setAttribute('aria-hidden', 'false');
+
+    setTimeout(() => {
+      const firstBtn = popupActions.querySelector('button');
+      if (firstBtn) firstBtn.focus();
+    }, 0);
+  }
+
+  function closePopup(){
+    popupOverlay.classList.remove('show');
+    popupOverlay.setAttribute('aria-hidden', 'true');
+    popupActions.innerHTML = '';
+    showInputPanel();
+
+    if (inputPanel.style.display !== 'none') {
+      setTimeout(() => input.focus(), 0);
+    }
+  }
+
+  function maybeShowNthPopup(){
+    if (POPUP_EVERY_N <= 0) return;
+    if (inputCount <= 0) return;
+    if (inputCount % POPUP_EVERY_N !== 0) return;
+
+    const p = POPUP_LIBRARY[popupCursor % POPUP_LIBRARY.length];
+    popupCursor++;
+
+    if (p.kind === 'one'){
       openPopup({
-        title: PREMIUM_POPUP.title,
-        text: PREMIUM_POPUP.text,
+        title: p.title,
+        text: p.text,
         actions: [
-          { text: PREMIUM_POPUP.buyText, onClick: () => { closePopup(); playMain(27); } },
-          { text: PREMIUM_POPUP.noText, onClick: () => { closePopup(); playMain(28); } },
+          {
+            text: p.okText || 'OK',
+            onClick: () => {
+              closePopup();
+
+              if (p.action === 'GO_TO_27') {
+                playMain(27);
+              }
+            }
+          }
         ]
       });
     }
 
-    function showConfirmEndPopup(){
+    if (p.kind === 'two'){
       openPopup({
-        title: CONFIRM_END_POPUP.title,
-        text: CONFIRM_END_POPUP.text,
+        title: p.title,
+        text: p.text,
         actions: [
-          { text: CONFIRM_END_POPUP.buyText, onClick: () => { closePopup(); playMain(27); } },
-          { text: CONFIRM_END_POPUP.endText, onClick: () => { closePopup(); playMain(1); } },
+          {
+            text: p.okText || 'OK',
+            onClick: () => {
+              closePopup();
+
+              if (p.action === 'GO_TO_27') {
+                playMain(27);
+              }
+            }
+          },
+          {
+            text: p.cancelText || 'Abbrechen',
+            onClick: () => {
+              closePopup();
+            }
+          }
         ]
       });
     }
+  }
 
-    function showBackToStartOnly(){
-  showCenterButton(BACK_TO_START_BUTTON_TEXT, () => {
-    closeCenterButton();
-    playMain(1);
-  });
-}
+  /********************************************************************
+   * Premium / end flow UI
+   ********************************************************************/
+  function hideInputPanel(){
+    inputPanel.style.display = 'none';
+  }
 
-    function resetConversationStates(){
-      inPremiumFlow = false;
+  function showInputPanel(){
+    inputPanel.style.display = '';
+  }
+
+  function showPremiumPopup(){
+    openPopup({
+      title: PREMIUM_POPUP.title,
+      text: PREMIUM_POPUP.text,
+      actions: [
+        { text: PREMIUM_POPUP.buyText, onClick: () => { closePopup(); playMain(27); } },
+        { text: PREMIUM_POPUP.noText, onClick: () => { closePopup(); playMain(28); } },
+      ]
+    });
+  }
+
+  function showConfirmEndPopup(){
+    openPopup({
+      title: CONFIRM_END_POPUP.title,
+      text: CONFIRM_END_POPUP.text,
+      actions: [
+        { text: CONFIRM_END_POPUP.buyText, onClick: () => { closePopup(); playMain(27); } },
+        { text: CONFIRM_END_POPUP.endText, onClick: () => { closePopup(); playMain(29); } },
+      ]
+    });
+  }
+
+  function showBackToStartOnly(){
+    showCenterButton(BACK_TO_START_BUTTON_TEXT, () => {
+      closeCenterButton();
+      playMain(1);
+    });
+  }
+
+  function resetConversationStates(){
+    inPremiumFlow = false;
+    pendingMainIndex = null;
+    ignoreTriggersOnce = false;
+    inputCount = 0;
+    popupCursor = 0;
+    triggerHistory = [];
+    triggerLastFiredAt = {};
+    fallbackLastFiredAt = null;
+    confrontLastFiredAt = null;
+    redirectLastFiredAt = null;
+    lastNarrativePlayback = { type: 'main', value: MAIN_MIN };
+    showInputPanel();
+  }
+
+  /********************************************************************
+   * Main advance logic
+   ********************************************************************/
+  function advance(){
+    if (inPremiumFlow) return;
+    if (isBlockingOverlayOpen()) return;
+
+    const raw = input.value || '';
+    const trimmed = raw.trim();
+    const normalized = normalizeForMatch(raw);
+
+    if (REQUIRE_NONEMPTY_INPUT && trimmed.length === 0) {
+      input.focus();
+      return;
+    }
+
+    inputCount++;
+    INPUT_LOG.push({ mainBefore: mainIndex, text: trimmed, ts: new Date() });
+    input.value = '';
+
+    if (mainIndex === PREMIUM_GATE_AFTER_MAIN) {
+      inPremiumFlow = true;
+      hideInputPanel();
+      showPremiumPopup();
+      return;
+    }
+
+    // Wiederholen: letztes Main-/Special-Video erneut abspielen
+    if (isRepeatRequest(raw)) {
+      replayLastNarrativeVideo();
+      return;
+    }
+
+    // Wenn ein Special abgespielt wurde, dann beim nächsten Submit zurück in den Main-Flow
+    if (pendingMainIndex !== null) {
+      const nextMain = pendingMainIndex;
       pendingMainIndex = null;
       ignoreTriggersOnce = false;
-      inputCount = 0;
-      popupCursor = 0;
-      triggerHistory = [];
-      triggerLastFiredAt = {};
-      showInputPanel();
+      playMain(nextMain);
+      maybeShowNthPopup();
+      return;
     }
 
-    /********************************************************************
-     * Main advance logic
-     ********************************************************************/
-   function advance(){
-  if (inPremiumFlow) return;
-  if (isBlockingOverlayOpen()) return;
+    const triggersAllowed =
+      (!ignoreTriggersOnce) &&
+      (mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN) &&
+      canFireAnyTrigger();
 
-      const raw = input.value || '';
-      const trimmed = raw.trim();
-
-      if (REQUIRE_NONEMPTY_INPUT && trimmed.length === 0) {
-        input.focus();
-        return;
-      }
-
-      inputCount++;
-      INPUT_LOG.push({ mainBefore: mainIndex, text: trimmed, ts: new Date() });
-      input.value = '';
-
-      if (mainIndex === PREMIUM_GATE_AFTER_MAIN) {
-        inPremiumFlow = true;
-        hideInputPanel();
-        showPremiumPopup();
-        return;
-      }
-
-      if (pendingMainIndex !== null) {
-        const nextMain = pendingMainIndex;
-        pendingMainIndex = null;
-        ignoreTriggersOnce = false;
-        playMain(nextMain);
+    // 1) Sonderfälle mit eigener Logik vor dem allgemeinen Trigger-Matching
+    if (triggersAllowed) {
+      if (isGibberishInput(raw) && canFireTriggerId('A15')) {
+        registerTriggerFire('A15');
+        pendingMainIndex = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+        ignoreTriggersOnce = true;
+        playSpecial('A15');
         maybeShowNthPopup();
         return;
       }
 
-      const triggersAllowed =
-        (!ignoreTriggersOnce) &&
-        (mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN) &&
-        canFireAnyTrigger();
-
-      if (triggersAllowed) {
-        const match = matchTrigger(raw);
-
-        if (match && SPECIAL_VIDEOS[match]) {
-          registerTriggerFire(match);
-
-          const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
-          pendingMainIndex = nextMain;
-          ignoreTriggersOnce = true;
-          playSpecial(match);
-          maybeShowNthPopup();
-          return;
-        }
+      if (isMonosyllabicStyleInput(raw) && canFireTriggerId('A14')) {
+        registerTriggerFire('A14');
+        pendingMainIndex = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+        ignoreTriggersOnce = true;
+        playSpecial('A14');
+        maybeShowNthPopup();
+        return;
       }
 
-      const next = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
-      playMain(next);
-      maybeShowNthPopup();
+      if (isA10Question(raw) && canFireTriggerId('A10')) {
+        registerTriggerFire('A10');
+        pendingMainIndex = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+        ignoreTriggersOnce = true;
+        playSpecial('A10');
+        maybeShowNthPopup();
+        return;
+      }
+
+      if (isA13CanYou(raw) && canFireTriggerId('A13')) {
+        registerTriggerFire('A13');
+        pendingMainIndex = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+        ignoreTriggersOnce = true;
+        playSpecial('A13');
+        maybeShowNthPopup();
+        return;
+      }
     }
 
-    /********************************************************************
-     * Audio toggling + start overlay
-     ********************************************************************/
-    function setAudioEnabled(on){
-      audioEnabled = !!on;
-      muteBtn.textContent = audioEnabled ? 'Ton aus' : 'Ton an';
-      tryPlayMedia();
+    // 2) Direkte Trigger
+    if (triggersAllowed) {
+      const match = matchTrigger(raw);
+
+      if (match && SPECIAL_VIDEOS[match]) {
+        registerTriggerFire(match);
+
+        const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+        pendingMainIndex = nextMain;
+        ignoreTriggersOnce = true;
+        playSpecial(match);
+        maybeShowNthPopup();
+        return;
+      }
     }
 
-    muteBtn.addEventListener('click', () => setAudioEnabled(!audioEnabled));
-submitBtn.addEventListener('click', advance);
+    // 3) Probabilistische Fallbacks / Konfrontation / Redirect
+    const probabilisticAllowed =
+      normalized.length > 6 &&
+      tokenCount(normalized) >= 2 &&
+      mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN &&
+      canFireAnyTrigger();
 
-input.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    advance();
+    if (probabilisticAllowed) {
+      const fallbackChance = currentLinearChance(FALLBACK_CHANCE_EARLY, FALLBACK_CHANCE_LATE);
+      const confrontChance = currentLinearChance(CONFRONT_CHANCE_EARLY, CONFRONT_CHANCE_LATE);
+      const redirectChance = currentLinearChance(REDIRECT_CHANCE_EARLY, REDIRECT_CHANCE_LATE);
+
+      const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+
+      if (canFireTimed(fallbackLastFiredAt, FALLBACK_COOLDOWN_STEPS) && Math.random() < fallbackChance) {
+        fallbackLastFiredAt = inputCount;
+        triggerHistory.push(inputCount);
+
+        pendingMainIndex = nextMain;
+        ignoreTriggersOnce = true;
+
+        const chosen = pickRandom(['A20', 'A21']);
+        playSpecial(chosen);
+        maybeShowNthPopup();
+        return;
+      }
+
+      if (canFireTimed(confrontLastFiredAt, CONFRONT_COOLDOWN_STEPS) && Math.random() < confrontChance) {
+        confrontLastFiredAt = inputCount;
+        triggerHistory.push(inputCount);
+
+        pendingMainIndex = nextMain;
+        ignoreTriggersOnce = true;
+
+        const chosen = pickRandom(['A22', 'A23']);
+        playSpecial(chosen);
+        maybeShowNthPopup();
+        return;
+      }
+
+      if (canFireTimed(redirectLastFiredAt, REDIRECT_COOLDOWN_STEPS) && Math.random() < redirectChance) {
+        redirectLastFiredAt = inputCount;
+        triggerHistory.push(inputCount);
+
+        pendingMainIndex = nextMain;
+        ignoreTriggersOnce = true;
+
+        const chosen = pickRandom(['A24', 'A25']);
+        playSpecial(chosen);
+        maybeShowNthPopup();
+        return;
+      }
+    }
+
+    // 4) Default: normales nächstes Main-Video
+    const next = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+    playMain(next);
+    maybeShowNthPopup();
   }
-});
 
-startBtn.addEventListener('click', () => {
-  setAudioEnabled(true);
-  startOverlay.style.display = 'none';
-  playMain(MAIN_MIN);
-  input.focus();
-});
+  /********************************************************************
+   * Audio toggling + start overlay
+   ********************************************************************/
+  function setAudioEnabled(on){
+    audioEnabled = !!on;
+    muteBtn.textContent = audioEnabled ? 'Ton aus' : 'Ton an';
+    tryPlayMedia();
+  }
 
-/********************************************************************
- * Boot
- ********************************************************************/
-setAudioEnabled(false);
-    
-  </script>
+  muteBtn.addEventListener('click', () => setAudioEnabled(!audioEnabled));
+  submitBtn.addEventListener('click', advance);
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      advance();
+    }
+  });
+
+  startBtn.addEventListener('click', () => {
+    setAudioEnabled(true);
+    startOverlay.style.display = 'none';
+    playMain(MAIN_MIN);
+    input.focus();
+  });
+
+  /********************************************************************
+   * Boot
+   ********************************************************************/
+  setAudioEnabled(false);
+</script>
 </body>
 </html>
