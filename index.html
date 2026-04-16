@@ -174,20 +174,25 @@
     #popupOverlay.show #popup{ transform: scale(1); opacity: 1; }
 
     #popupHeader{
-      display:flex; align-items:center; justify-content:space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-    #popupTitle{
-      font: 700 16px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      letter-spacing:.02em;
-    }
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+   #popupTitle{
+  font: 700 16px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  letter-spacing:.02em;
+  width: 100%;
+  text-align: center;
+}
     #popupText{
-      font: 500 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color: rgba(255,255,255,.86);
-      white-space: pre-wrap;
-      margin: 0;
-    }
+  font: 500 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: rgba(255,255,255,.86);
+  white-space: pre-wrap;
+  margin: 0;
+  text-align: center;
+}
     #popupActions{ display:flex; gap:10px; justify-content:flex-end; margin-top: 14px; }
     #popupActions button{ padding: 10px 12px; }
 
@@ -556,11 +561,14 @@
       showBackToStartOnly();
     };
   } else if (n === 28) {
+  onEnded = () => {
+    playIdleLoop();
+    showConfirmEndPopup();
+  };
+} else if (n === 29) {
     onEnded = () => {
       playIdleLoop();
-      delayedPopupTimer = setTimeout(() => {
-        showConfirmEndPopup();
-      }, END_POPUP_DELAY);
+      showBackToStartOnly();
     };
   }
 
