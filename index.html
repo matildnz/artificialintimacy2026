@@ -521,7 +521,7 @@
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
 
-    const keepQuestion = normalized.replace(/[.,!;:()"'“”„”]/g, ' ');
+    const keepQuestion = normalized.replace(/[.,!?;:()"'“”„”]/g, ' ');
     return keepQuestion.replace(/\s+/g, ' ').trim();
   }
 
