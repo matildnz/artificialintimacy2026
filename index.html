@@ -577,6 +577,9 @@ function includesAnyKeyword(text, keywords){
     const normalized = normalizeForMatch(rawInput);
     return includesAnyExactOrContained(normalized, REPEAT_PHRASES);
   }
+    function isPriorityTrigger(id){
+  return ['A01', 'A04', 'A11', 'A13'].includes(id);
+}
 
   function isMonosyllabicStyleInput(rawInput){
     const normalized = normalizeForMatch(rawInput);
@@ -617,10 +620,12 @@ function includesAnyKeyword(text, keywords){
   }
 
   function isA13CanYou(rawInput){
-    const normalized = normalizeForMatch(rawInput);
-    const hasQuestionMark = (rawInput || '').includes('?');
-    return normalized.startsWith('kannst du') || hasQuestionMark && normalized.includes('kannst du');
-  }
+  const normalized = normalizeForMatch(rawInput);
+  const hasQuestionMark = (rawInput || '').includes('?');
+
+  return normalized.startsWith('kannst du') ||
+         (hasQuestionMark && includesAnyPhraseStrict(normalized, ['kannst du']));
+}
 
   function currentLinearChance(early, late){
     const clamped = Math.max(MAIN_MIN, Math.min(TRIGGERS_ACTIVE_UNTIL_MAIN, mainIndex));
@@ -957,96 +962,114 @@ function includesAnyKeyword(text, keywords){
    * Main advance logic
    ********************************************************************/
   function advance(){
-    if (inPremiumFlow) return;
-    if (isBlockingOverlayOpen()) return;
+  if (inPremiumFlow) return;
+  if (isBlockingOverlayOpen()) return;
 
-    const raw = input.value || '';
-    const trimmed = raw.trim();
-    const normalized = normalizeForMatch(raw);
+  const raw = input.value || '';
+  const trimmed = raw.trim();
+  const normalized = normalizeForMatch(raw);
 
-    if (REQUIRE_NONEMPTY_INPUT && trimmed.length === 0) {
-      input.focus();
-      return;
-    }
+  if (REQUIRE_NONEMPTY_INPUT && trimmed.length === 0) {
+    input.focus();
+    return;
+  }
 
-    inputCount++;
-    INPUT_LOG.push({ mainBefore: mainIndex, text: trimmed, ts: new Date() });
-    input.value = '';
+  inputCount++;
+  INPUT_LOG.push({ mainBefore: mainIndex, text: trimmed, ts: new Date() });
+  input.value = '';
 
-    if (mainIndex === PREMIUM_GATE_AFTER_MAIN) {
-      inPremiumFlow = true;
-      hideInputPanel();
-      showPremiumPopup();
-      return;
-    }
+  if (mainIndex === PREMIUM_GATE_AFTER_MAIN) {
+    inPremiumFlow = true;
+    hideInputPanel();
+    showPremiumPopup();
+    return;
+  }
 
-    // Wiederholen: letztes Main-/Special-Video erneut abspielen
-    if (isRepeatRequest(raw)) {
-      replayLastNarrativeVideo();
-      return;
-    }
+  // Wiederholen: letztes Main-/Special-Video erneut abspielen
+  if (isRepeatRequest(raw)) {
+    replayLastNarrativeVideo();
+    return;
+  }
 
-    // Wenn ein Special abgespielt wurde, dann beim nächsten Submit zurück in den Main-Flow
-    if (pendingMainIndex !== null) {
-      const nextMain = pendingMainIndex;
-      pendingMainIndex = null;
-      ignoreTriggersOnce = false;
-      playMain(nextMain);
+  // Wenn ein Special abgespielt wurde, dann beim nächsten Submit zurück in den Main-Flow
+  if (pendingMainIndex !== null) {
+    const nextMain = pendingMainIndex;
+    pendingMainIndex = null;
+    ignoreTriggersOnce = false;
+    playMain(nextMain);
+    maybeShowNthPopup();
+    return;
+  }
+
+  const triggersInRange = mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN;
+  const generalTriggerAllowed =
+    (!ignoreTriggersOnce) &&
+    triggersInRange &&
+    canFireAnyTrigger();
+
+  const priorityTriggerAllowed =
+    (!ignoreTriggersOnce) &&
+    triggersInRange;
+
+  const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+
+  // 1) Sonderfälle mit eigener Logik
+
+  // A13 = klarer direkter Trigger -> nicht vom globalen Gap blockieren
+  if (
+    priorityTriggerAllowed &&
+    isA13CanYou(raw) &&
+    canFireTriggerId('A13')
+  ) {
+    registerTriggerFire('A13');
+    pendingMainIndex = nextMain;
+    ignoreTriggersOnce = true;
+    playSpecial('A13');
+    maybeShowNthPopup();
+    return;
+  }
+
+  // Diese bleiben bewusst am globalen Gap, damit keine Schleifen entstehen
+  if (generalTriggerAllowed) {
+    if (isGibberishInput(raw) && canFireTriggerId('A15')) {
+      registerTriggerFire('A15');
+      pendingMainIndex = nextMain;
+      ignoreTriggersOnce = true;
+      playSpecial('A15');
       maybeShowNthPopup();
       return;
     }
 
-    const triggersAllowed =
-      (!ignoreTriggersOnce) &&
-      (mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN) &&
-      canFireAnyTrigger();
-
-    // 1) Sonderfälle mit eigener Logik vor dem allgemeinen Trigger-Matching
-    if (triggersAllowed) {
-      if (isGibberishInput(raw) && canFireTriggerId('A15')) {
-        registerTriggerFire('A15');
-        pendingMainIndex = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
-        ignoreTriggersOnce = true;
-        playSpecial('A15');
-        maybeShowNthPopup();
-        return;
-      }
-
-      if (isMonosyllabicStyleInput(raw) && canFireTriggerId('A14')) {
-        registerTriggerFire('A14');
-        pendingMainIndex = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
-        ignoreTriggersOnce = true;
-        playSpecial('A14');
-        maybeShowNthPopup();
-        return;
-      }
-
-      if (isA10Question(raw) && canFireTriggerId('A10')) {
-        registerTriggerFire('A10');
-        pendingMainIndex = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
-        ignoreTriggersOnce = true;
-        playSpecial('A10');
-        maybeShowNthPopup();
-        return;
-      }
-
-      function isA13CanYou(rawInput){
-  const normalized = normalizeForMatch(rawInput);
-  const hasQuestionMark = (rawInput || '').includes('?');
-
-  return normalized.startsWith('kannst du') ||
-         (hasQuestionMark && includesAnyPhraseStrict(normalized, ['kannst du']));
-}
+    if (isMonosyllabicStyleInput(raw) && canFireTriggerId('A14')) {
+      registerTriggerFire('A14');
+      pendingMainIndex = nextMain;
+      ignoreTriggersOnce = true;
+      playSpecial('A14');
+      maybeShowNthPopup();
+      return;
     }
 
-    // 2) Direkte Trigger
-    if (triggersAllowed) {
-      const match = matchTrigger(raw);
+    if (isA10Question(raw) && canFireTriggerId('A10')) {
+      registerTriggerFire('A10');
+      pendingMainIndex = nextMain;
+      ignoreTriggersOnce = true;
+      playSpecial('A10');
+      maybeShowNthPopup();
+      return;
+    }
+  }
 
-      if (match && SPECIAL_VIDEOS[match]) {
+  // 2) Direkte Trigger aus TRIGGERS
+  if (!ignoreTriggersOnce && triggersInRange) {
+    const match = matchTrigger(raw);
+
+    if (match && SPECIAL_VIDEOS[match]) {
+      const allowed = isPriorityTrigger(match)
+        ? canFireTriggerId(match)
+        : (canFireAnyTrigger() && canFireTriggerId(match));
+
+      if (allowed) {
         registerTriggerFire(match);
-
-        const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
         pendingMainIndex = nextMain;
         ignoreTriggersOnce = true;
         playSpecial(match);
@@ -1054,67 +1077,66 @@ function includesAnyKeyword(text, keywords){
         return;
       }
     }
+  }
 
-    // 3) Probabilistische Fallbacks / Konfrontation / Redirect
-   const probabilisticAllowed =
-  normalized.length > 6 &&
-  tokenCount(normalized) >= 2 &&
-  mainIndex >= 2 &&
-  mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN &&
-  canFireAnyTrigger();
+  // 3) Probabilistische Fallbacks / Konfrontation / Redirect
+  // ab Main 2, damit der Einstieg nicht sofort schief kippt
+  const probabilisticAllowed =
+    normalized.length > 6 &&
+    tokenCount(normalized) >= 2 &&
+    mainIndex >= 2 &&
+    mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN &&
+    canFireAnyTrigger();
 
-    if (probabilisticAllowed) {
-      const fallbackChance = currentLinearChance(FALLBACK_CHANCE_EARLY, FALLBACK_CHANCE_LATE);
-      const confrontChance = currentLinearChance(CONFRONT_CHANCE_EARLY, CONFRONT_CHANCE_LATE);
-      const redirectChance = currentLinearChance(REDIRECT_CHANCE_EARLY, REDIRECT_CHANCE_LATE);
+  if (probabilisticAllowed) {
+    const fallbackChance = currentLinearChance(FALLBACK_CHANCE_EARLY, FALLBACK_CHANCE_LATE);
+    const confrontChance = currentLinearChance(CONFRONT_CHANCE_EARLY, CONFRONT_CHANCE_LATE);
+    const redirectChance = currentLinearChance(REDIRECT_CHANCE_EARLY, REDIRECT_CHANCE_LATE);
 
-      const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+    if (canFireTimed(fallbackLastFiredAt, FALLBACK_COOLDOWN_STEPS) && Math.random() < fallbackChance) {
+      fallbackLastFiredAt = inputCount;
+      triggerHistory.push(inputCount);
 
-      if (canFireTimed(fallbackLastFiredAt, FALLBACK_COOLDOWN_STEPS) && Math.random() < fallbackChance) {
-        fallbackLastFiredAt = inputCount;
-        triggerHistory.push(inputCount);
+      pendingMainIndex = nextMain;
+      ignoreTriggersOnce = true;
 
-        pendingMainIndex = nextMain;
-        ignoreTriggersOnce = true;
-
-        const chosen = pickRandom(['A20', 'A21']);
-        playSpecial(chosen);
-        maybeShowNthPopup();
-        return;
-      }
-
-      if (canFireTimed(confrontLastFiredAt, CONFRONT_COOLDOWN_STEPS) && Math.random() < confrontChance) {
-        confrontLastFiredAt = inputCount;
-        triggerHistory.push(inputCount);
-
-        pendingMainIndex = nextMain;
-        ignoreTriggersOnce = true;
-
-        const chosen = pickRandom(['A22', 'A23']);
-        playSpecial(chosen);
-        maybeShowNthPopup();
-        return;
-      }
-
-      if (canFireTimed(redirectLastFiredAt, REDIRECT_COOLDOWN_STEPS) && Math.random() < redirectChance) {
-        redirectLastFiredAt = inputCount;
-        triggerHistory.push(inputCount);
-
-        pendingMainIndex = nextMain;
-        ignoreTriggersOnce = true;
-
-        const chosen = pickRandom(['A24', 'A25']);
-        playSpecial(chosen);
-        maybeShowNthPopup();
-        return;
-      }
+      const chosen = pickRandom(['A20', 'A21']);
+      playSpecial(chosen);
+      maybeShowNthPopup();
+      return;
     }
 
-    // 4) Default: normales nächstes Main-Video
-    const next = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
-    playMain(next);
-    maybeShowNthPopup();
+    if (canFireTimed(confrontLastFiredAt, CONFRONT_COOLDOWN_STEPS) && Math.random() < confrontChance) {
+      confrontLastFiredAt = inputCount;
+      triggerHistory.push(inputCount);
+
+      pendingMainIndex = nextMain;
+      ignoreTriggersOnce = true;
+
+      const chosen = pickRandom(['A22', 'A23']);
+      playSpecial(chosen);
+      maybeShowNthPopup();
+      return;
+    }
+
+    if (canFireTimed(redirectLastFiredAt, REDIRECT_COOLDOWN_STEPS) && Math.random() < redirectChance) {
+      redirectLastFiredAt = inputCount;
+      triggerHistory.push(inputCount);
+
+      pendingMainIndex = nextMain;
+      ignoreTriggersOnce = true;
+
+      const chosen = pickRandom(['A24', 'A25']);
+      playSpecial(chosen);
+      maybeShowNthPopup();
+      return;
+    }
   }
+
+  // 4) Default: normales nächstes Main-Video
+  playMain(nextMain);
+  maybeShowNthPopup();
+}
 
   /********************************************************************
    * Audio toggling + start overlay
