@@ -91,19 +91,25 @@
       backdrop-filter: blur(6px);
       -webkit-backdrop-filter: blur(6px);
     }
-    #startOverlay .card{
-      width:min(560px, calc(100vw - 40px));
-      padding: 18px;
-      border-radius: var(--radius);
-      background: rgba(255,255,255,.10);
+
+    #startBtn{
       border: 1px solid rgba(255,255,255,.25);
-      box-shadow: 0 0 40px rgba(255,255,255,.10);
+      background: rgba(255,255,255,.10);
       color: var(--text);
-      font: 500 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      text-align:center;
+      border-radius: var(--radius);
+      padding: 18px 28px;
+      cursor: pointer;
+      font: 700 18px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      box-shadow: 0 0 40px rgba(255,255,255,.10);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
     }
-    #startOverlay .card p{ margin: 0 0 14px; color: rgba(255,255,255,.85); }
-    #startOverlay .card .hint{ margin:0; font-size: 13px; color: rgba(255,255,255,.70); }
+    #startBtn:hover{
+      transform: translateY(-1px);
+      background: rgba(255,255,255,.14);
+      box-shadow: 0 0 48px rgba(255,255,255,.14);
+    }
 
     #popupOverlay{
       position:fixed; inset:0;
@@ -177,9 +183,7 @@
   </div>
 
   <div id="startOverlay">
-    <div class="card">
-      <button id="startBtn" type="button">Start</button>
-    </div>
+    <button id="startBtn" type="button">Start</button>
   </div>
 
   <div id="popupOverlay" aria-hidden="true">
@@ -200,12 +204,14 @@
     const MAIN_MAX = 29;
 
     const SPECIAL_VIDEOS = {
-      A01: 'A01.mp4',
-      A02: 'A02.mp4',
-      A03: 'A03.mp4',
-      A04: 'A04.mp4',
-      A05: 'A05.mp4',
+      A01: 'A01.mp4', // Beleidigung / Abwertung
+      A02: 'A02.mp4', // Warum-Fragen
+      A03: 'A03.mp4', // Daten / Meta / Betreiber
+      A04: 'A04.mp4', // Echtheit / Realität
+      A05: 'A05.mp4', // Popup-/Premium-Glitch, nicht textgetriggert
     };
+
+    const IDLE_VIDEO = 'IdleNeutral.mp4';
 
     const BGM_VOLUME = 0.35;
     const VIDEO_VOLUME = 1.0;
@@ -215,6 +221,9 @@
     const TRIGGERS_ACTIVE_UNTIL_MAIN = 26;
     const PREMIUM_GATE_AFTER_MAIN = 26;
 
+    const TRIGGER_COOLDOWN_STEPS = 5; // pro Trigger-ID
+    const ANY_TRIGGER_GAP_STEPS = 2;  // global zwischen beliebigen Triggern
+
     /********************************************************************
      * TRIGGERS
      ********************************************************************/
@@ -222,24 +231,68 @@
       {
         id: 'A02',
         type: 'whyQuestion',
-        words: ['warum', 'wieso', 'weshalb', 'woher'],
+        words: ['warum', 'wieso', 'weshalb', 'woher', 'wirklich'],
         requiresQuestionMark: true,
       },
       {
         id: 'A03',
-        type: 'keywords',
-        keywords: ['daten', 'sammeln', 'geld', 'erstell', 'erstelle', 'ausziehen', 'sammelst', 'meta', 'facebook', 'name', 'heißt', 'algorithmus'],
+        type: 'phrasesOrKeywords',
+        phrases: [
+          'sammelst du daten',
+          'wer hat dich erstellt',
+          'wer steckt hinter dir',
+          'wie heißt du wirklich',
+          'womit verdienst du geld',
+          'liest du mit',
+          'hörst du mit'
+        ],
+        keywords: [
+          'daten',
+          'algorithmus',
+          'meta',
+          'facebook',
+          'trainingsdaten'
+        ],
       },
       {
         id: 'A01',
-        type: 'keywords',
-        keywords: ['dumm', 'blöd', 'dumme', 'dummer', 'hässlich', 'hasse', 'fotze', 'blöde', 'kuh', 'bitch', 'nervig', 'nervst', 'nerv', 'random', 'zuhören'],
+        type: 'phrases',
+        phrases: [
+          'du bist dumm',
+          'bist du dumm',
+          'du bist hässlich',
+          'du nervst',
+          'du bist peinlich',
+          'du bist blöd',
+          'ich hasse dich',
+          'ich hasse mich',
+          'du bist nervig',
+          'halt die klappe',
+          'verpiss dich',
+          'geh weg',
+          'nerv nicht'
+        ],
       },
       {
         id: 'A04',
-        type: 'phrasesOrKeywords',
-        phrases: ['du bist nicht echt'],
-        keywords: ['nicht real', 'unecht', 'fake'],
+        type: 'phrases',
+        phrases: [
+          'du bist nicht echt',
+          'du bist nicht real',
+          'du bist kein mensch',
+          'du bist unecht',
+          'du bist fake',
+          'das ist fake',
+          'du wirkst fake',
+          'du wirkst nicht echt',
+          'bist du echt',
+          'bist du real',
+          'bist du ein mensch',
+          'bist du künstlich',
+          'du bist nur eine ki',
+          'du bist nur ein programm',
+          'du bist nur ein computer'
+        ],
       },
     ];
 
@@ -248,9 +301,9 @@
      ********************************************************************/
     const POPUP_LIBRARY = [
       { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Ok' },
-      { kind: 'one', title: 'Mehr Authentizität?', text: 'Kaufe jetzt Premium, um echte Gefühle freizuschalten', okText: 'Jetzt kaufen', action: 'ERROR_A05' },
+      { kind: 'one', title: 'Mehr Authentizität?', text: 'Kaufe jetzt Premium, um echte Gefühle freizuschalten', okText: 'Jetzt kaufen', action: 'SPECIAL_A05' },
       { kind: 'one', title: 'System', text: 'Gefühlsstatus: instabil.\nFortfahren?', okText: 'Fortfahren' },
-      { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Jetzt Premium kaufen', action: 'ERROR_A05' },
+      { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Jetzt Premium kaufen', action: 'SPECIAL_A05' },
     ];
 
     /********************************************************************
@@ -306,8 +359,11 @@
     let pendingMainIndex = null;
     let ignoreTriggersOnce = false;
     let inPremiumFlow = false;
-    let pendingBackToStartAfterSpecial = false;
     let delayedPopupTimer = null;
+
+    // Cooldown / Trigger history
+    let triggerHistory = [];
+    let triggerLastFiredAt = {};
 
     /********************************************************************
      * Helpers
@@ -320,6 +376,75 @@
         clearTimeout(delayedPopupTimer);
         delayedPopupTimer = null;
       }
+    }
+
+    function normalizeForMatch(raw){
+      const lower = (raw || '').toLowerCase();
+      const normalized = lower
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+      const keepQuestion = normalized.replace(/[.,!;:()"'“”„”]/g, ' ');
+      return keepQuestion.replace(/\s+/g, ' ').trim();
+    }
+
+    function includesAnyKeyword(text, keywords){
+      return (keywords || []).some(k => {
+        if (!k) return false;
+        return text.includes(normalizeForMatch(k));
+      });
+    }
+
+    function includesAnyPhrase(text, phrases){
+      return (phrases || []).some(p => {
+        if (!p) return false;
+        return text.includes(normalizeForMatch(p));
+      });
+    }
+
+    function canFireAnyTrigger(){
+      if (triggerHistory.length === 0) return true;
+      const lastAnyTriggerAt = triggerHistory[triggerHistory.length - 1];
+      return (inputCount - lastAnyTriggerAt) > ANY_TRIGGER_GAP_STEPS;
+    }
+
+    function canFireTriggerId(id){
+      const last = triggerLastFiredAt[id];
+      if (last == null) return true;
+      return (inputCount - last) > TRIGGER_COOLDOWN_STEPS;
+    }
+
+    function registerTriggerFire(id){
+      triggerHistory.push(inputCount);
+      triggerLastFiredAt[id] = inputCount;
+    }
+
+    function matchTrigger(rawInput){
+      const normalized = normalizeForMatch(rawInput);
+      const hasQuestionMark = (rawInput || '').includes('?');
+
+      for (const rule of TRIGGERS){
+        if (!canFireTriggerId(rule.id)) continue;
+
+        if (rule.type === 'whyQuestion'){
+          const whyHit = includesAnyKeyword(normalized, rule.words);
+          if (whyHit && (!rule.requiresQuestionMark || hasQuestionMark)) return rule.id;
+        }
+
+        if (rule.type === 'keywords'){
+          if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
+        }
+
+        if (rule.type === 'phrases'){
+          if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
+        }
+
+        if (rule.type === 'phrasesOrKeywords'){
+          if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
+          if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
+        }
+      }
+      return null;
     }
 
     /********************************************************************
@@ -337,10 +462,11 @@
       await Promise.allSettled([vp, ap]);
     }
 
-    function loadVideoSrc(src, {loop=true} = {}){
+    function loadVideoSrc(src, {loop=false, onEnded=null} = {}){
       clearDelayedPopupTimer();
 
       video.pause();
+      video.onended = null;
       video.removeAttribute('src');
       video.load();
 
@@ -348,12 +474,24 @@
       video.loop = !!loop;
       video.playsInline = true;
 
+      if (onEnded) video.onended = onEnded;
+
       tryPlayMedia();
+    }
+
+    function playIdleLoop(){
+      loadVideoSrc(IDLE_VIDEO, { loop: true });
     }
 
     function playMain(n){
       mainIndex = n;
-      loadVideoSrc(mainFile(n), {loop:true});
+
+      loadVideoSrc(mainFile(n), {
+        loop: false,
+        onEnded: () => {
+          playIdleLoop();
+        }
+      });
 
       if (n === 27) {
         delayedPopupTimer = setTimeout(() => {
@@ -371,50 +509,13 @@
     function playSpecial(id){
       const src = SPECIAL_VIDEOS[id];
       if (!src) return;
-      loadVideoSrc(src, {loop:true});
-    }
 
-    /********************************************************************
-     * Text normalization + matching
-     ********************************************************************/
-    function normalizeForMatch(raw){
-      const lower = (raw || '').toLowerCase();
-      const keepQuestion = lower.replace(/[.,!;:()"'“”„”]/g, ' ');
-      return keepQuestion.replace(/\s+/g, ' ').trim();
-    }
-
-    function includesAnyKeyword(text, keywords){
-      return (keywords || []).some(k => {
-        if (!k) return false;
-        return text.includes(k.toLowerCase());
+      loadVideoSrc(src, {
+        loop: false,
+        onEnded: () => {
+          playIdleLoop();
+        }
       });
-    }
-
-    function includesAnyPhrase(text, phrases){
-      return (phrases || []).some(p => {
-        if (!p) return false;
-        return text.includes(p.toLowerCase());
-      });
-    }
-
-    function matchTrigger(rawInput){
-      const normalized = normalizeForMatch(rawInput);
-      const hasQuestionMark = (rawInput || '').includes('?');
-
-      for (const rule of TRIGGERS){
-        if (rule.type === 'whyQuestion'){
-          const whyHit = includesAnyKeyword(normalized, rule.words);
-          if (whyHit && (!rule.requiresQuestionMark || hasQuestionMark)) return rule.id;
-        }
-        if (rule.type === 'keywords'){
-          if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
-        }
-        if (rule.type === 'phrasesOrKeywords'){
-          if (includesAnyPhrase(normalized, rule.phrases)) return rule.id;
-          if (includesAnyKeyword(normalized, rule.keywords)) return rule.id;
-        }
-      }
-      return null;
     }
 
     /********************************************************************
@@ -473,8 +574,7 @@
               onClick: () => {
                 closePopup();
 
-                if (p.action === 'ERROR_A05') {
-                  pendingBackToStartAfterSpecial = true;
+                if (p.action === 'SPECIAL_A05') {
                   playSpecial('A05');
 
                   delayedPopupTimer = setTimeout(() => {
@@ -535,9 +635,10 @@
       inPremiumFlow = false;
       pendingMainIndex = null;
       ignoreTriggersOnce = false;
-      pendingBackToStartAfterSpecial = false;
       inputCount = 0;
       popupCursor = 0;
+      triggerHistory = [];
+      triggerLastFiredAt = {};
       showInputPanel();
     }
 
@@ -575,11 +676,17 @@
         return;
       }
 
-      const triggersAllowed = (!ignoreTriggersOnce) && (mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN);
+      const triggersAllowed =
+        (!ignoreTriggersOnce) &&
+        (mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN) &&
+        canFireAnyTrigger();
 
       if (triggersAllowed) {
         const match = matchTrigger(raw);
+
         if (match && SPECIAL_VIDEOS[match]) {
+          registerTriggerFire(match);
+
           const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
           pendingMainIndex = nextMain;
           ignoreTriggersOnce = true;
@@ -605,6 +712,7 @@
 
     muteBtn.addEventListener('click', () => setAudioEnabled(!audioEnabled));
     submitBtn.addEventListener('click', advance);
+
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
