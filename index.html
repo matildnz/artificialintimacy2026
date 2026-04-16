@@ -300,11 +300,28 @@
      * POPUPS
      ********************************************************************/
     const POPUP_LIBRARY = [
-      { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Ok' },
-      { kind: 'one', title: 'Mehr Authentizität?', text: 'Kaufe jetzt Premium, um echte Gefühle freizuschalten', okText: 'Jetzt kaufen', action: 'SPECIAL_A05' },
-      { kind: 'one', title: 'System', text: 'Gefühlsstatus: instabil.\nFortfahren?', okText: 'Fortfahren' },
-      { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Jetzt Premium kaufen', action: 'SPECIAL_A05' },
-    ];
+  { kind: 'one', title: 'Error 404', text: 'Emotionen konnten nicht geladen werden.', okText: 'Ok' },
+
+  {
+    kind: 'two',
+    title: 'Mehr Authentizität?',
+    text: 'Kaufe jetzt Premium, um echte Gefühle freizuschalten',
+    okText: 'Jetzt kaufen',
+    cancelText: 'Nein, danke',
+    action: 'GO_TO_27',
+  },
+
+  { kind: 'one', title: 'System', text: 'Gefühlsstatus: instabil.\nFortfahren?', okText: 'Fortfahren' },
+
+  {
+    kind: 'two',
+    title: 'Error 404',
+    text: 'Emotionen konnten nicht geladen werden.',
+    okText: 'Jetzt Premium kaufen',
+    cancelText: 'Nein, Danke',
+    action: 'GO_TO_27',
+  },
+];
 
     /********************************************************************
      * Premium / End Flow texts
@@ -557,36 +574,57 @@
     });
 
     function maybeShowNthPopup(){
-      if (POPUP_EVERY_N <= 0) return;
-      if (inputCount <= 0) return;
-      if (inputCount % POPUP_EVERY_N !== 0) return;
+  if (POPUP_EVERY_N <= 0) return;
+  if (inputCount <= 0) return;
+  if (inputCount % POPUP_EVERY_N !== 0) return;
 
-      const p = POPUP_LIBRARY[popupCursor % POPUP_LIBRARY.length];
-      popupCursor++;
+  const p = POPUP_LIBRARY[popupCursor % POPUP_LIBRARY.length];
+  popupCursor++;
 
-      if (p.kind === 'one'){
-        openPopup({
-          title: p.title,
-          text: p.text,
-          actions: [
-            {
-              text: p.okText || 'OK',
-              onClick: () => {
-                closePopup();
+  if (p.kind === 'one'){
+    openPopup({
+      title: p.title,
+      text: p.text,
+      actions: [
+        {
+          text: p.okText || 'OK',
+          onClick: () => {
+            closePopup();
 
-                if (p.action === 'SPECIAL_A05') {
-                  playSpecial('A05');
-
-                  delayedPopupTimer = setTimeout(() => {
-                    showBackToStartOnly();
-                  }, END_POPUP_DELAY);
-                }
-              }
+            if (p.action === 'GO_TO_27') {
+              playMain(27);
             }
-          ]
-        });
-      }
-    }
+          }
+        }
+      ]
+    });
+  }
+
+  if (p.kind === 'two'){
+    openPopup({
+      title: p.title,
+      text: p.text,
+      actions: [
+        {
+          text: p.okText || 'OK',
+          onClick: () => {
+            closePopup();
+
+            if (p.action === 'GO_TO_27') {
+              playMain(27);
+            }
+          }
+        },
+        {
+          text: p.cancelText || 'Abbrechen',
+          onClick: () => {
+            closePopup();
+          }
+        }
+      ]
+    });
+  }
+}
 
     /********************************************************************
      * Premium / end flow UI
@@ -735,10 +773,15 @@
     }, { once: true });
 
     /********************************************************************
-     * Boot
+     * Boot 
      ********************************************************************/
     setAudioEnabled(false);
-    playMain(MAIN_MIN);
+    startBtn.addEventListener('click', () => {
+  setAudioEnabled(true);
+  startOverlay.style.display = 'none';
+  playMain(MAIN_MIN);
+  input.focus();
+});
   </script>
 </body>
 </html>
