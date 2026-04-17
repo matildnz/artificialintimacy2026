@@ -749,7 +749,7 @@ function includesAnyKeyword(text, keywords){
   lastNarrativePlayback = { type: 'main', value: n };
 
   // Eingabefeld bei den End-/Premium-Videos direkt ausblenden
-  if (n === 26 ||n === 27 || n === 28 || n === 29) {
+  if (n === 27 || n === 28 || n === 29) {
     hideInputPanel();
   } else {
     showInputPanel();
@@ -759,7 +759,14 @@ function includesAnyKeyword(text, keywords){
     playIdleLoop();
   };
 
-  if (n === 27) {
+  if (n === 26) {
+    onEnded = () => {
+      playIdleLoop();
+      inPremiumFlow = true;
+      hideInputPanel();
+      showPremiumPopup();
+    };
+  } else if (n === 27) {
     onEnded = () => {
       playIdleLoop();
       showBackToStartOnly();
@@ -780,6 +787,11 @@ function includesAnyKeyword(text, keywords){
     loop: false,
     onEnded
   });
+
+  if (n === 1) {
+    resetConversationStates();
+  }
+}
 
   if (n === 1) {
     resetConversationStates();
@@ -989,13 +1001,6 @@ function includesAnyKeyword(text, keywords){
   inputCount++;
   INPUT_LOG.push({ mainBefore: mainIndex, text: trimmed, ts: new Date() });
   input.value = '';
-
-  if (mainIndex === PREMIUM_GATE_AFTER_MAIN) {
-    inPremiumFlow = true;
-    hideInputPanel();
-    showPremiumPopup();
-    return;
-  }
 
   // Wiederholen: letztes Main-/Special-Video erneut abspielen
   if (isRepeatRequest(raw)) {
