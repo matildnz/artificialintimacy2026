@@ -827,6 +827,12 @@ function includesAnyKeyword(text, keywords){
       }
     });
   }
+    function playIdleLoop(){
+  loadVideoSrc(IDLE_VIDEO, {
+    loop: true,
+    onEnded: null
+  });
+}
 
   /********************************************************************
    * Popup system
