@@ -583,14 +583,14 @@
   function pad2(n){ return String(n).padStart(2,'0'); }
   function mainFile(n){ return `Video${pad2(n)}.mp4`; }
 
-    function pickRandomWithoutImmediateRepeat(arr){
-  if (!arr || arr.length === 0) return null;
-
-      function canPlaySpecialNow(id){
+    function canPlaySpecialNow(id){
   return lastSpecialPlayed !== id;
 }
 
-  // Alles außer dem zuletzt gespielten
+function pickRandomWithoutImmediateRepeat(arr){
+  if (!arr || arr.length === 0) return null;
+
+  // Alles außer dem zuletzt gespielten probabilistischen Special
   const filtered = arr.filter(x => x !== lastProbabilisticSpecial);
 
   // Wenn alles gefiltert wurde (z. B. nur 1 Element), fallback auf original
@@ -1165,6 +1165,7 @@ function maybeShowNthPopup(){
 const explicitTriggerAllowed = triggersInRange;
 
   const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
+  const triggersInRange = mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN;
 
   // 1) Sonderfälle mit eigener Logik
 
