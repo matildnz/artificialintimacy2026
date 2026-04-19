@@ -740,10 +740,6 @@ function includesAnyKeyword(text, keywords){
   console.error('Video konnte nicht geladen werden:', video.src);
 };
 
-  function playIdleLoop(){
-    loadVideoSrc(IDLE_VIDEO, { loop: true });
-  }
-
   function playMain(n){
   mainIndex = n;
   lastNarrativePlayback = { type: 'main', value: n };
@@ -787,11 +783,6 @@ function includesAnyKeyword(text, keywords){
     loop: false,
     onEnded
   });
-
-  if (n === 1) {
-    resetConversationStates();
-  }
-}
 
   if (n === 1) {
     resetConversationStates();
