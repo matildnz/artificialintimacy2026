@@ -581,27 +581,24 @@
    * Helpers
    ********************************************************************/
   function pad2(n){ return String(n).padStart(2,'0'); }
-  function mainFile(n){ return `Video${pad2(n)}.mp4`; }
+function mainFile(n){ return `Video${pad2(n)}.mp4`; }
 
-    function canPlaySpecialNow(id){
+function canPlaySpecialNow(id){
   return lastSpecialPlayed !== id;
 }
 
 function pickRandomWithoutImmediateRepeat(arr){
   if (!arr || arr.length === 0) return null;
 
-  // Alles außer dem zuletzt gespielten probabilistischen Special
   const filtered = arr.filter(x => x !== lastProbabilisticSpecial);
-
-  // Wenn alles gefiltert wurde (z. B. nur 1 Element), fallback auf original
   const pool = filtered.length ? filtered : arr;
-
   const chosen = pool[Math.floor(Math.random() * pool.length)];
 
   lastProbabilisticSpecial = chosen;
   return chosen;
 }
-    function isStrongExplicitTrigger(id){
+
+function isStrongExplicitTrigger(id){
   return ['A01', 'A04', 'A10', 'A11', 'A13', 'A16'].includes(id);
 }
     
@@ -1141,41 +1138,37 @@ function maybeShowNthPopup(){
   INPUT_LOG.push({ mainBefore: mainIndex, text: trimmed, ts: new Date() });
   input.value = '';
 
-  // Wiederholen: letztes Main-/Special-Video erneut abspielen
   if (isRepeatRequest(raw)) {
     replayLastNarrativeVideo();
     return;
   }
 
-  // Wenn ein Special abgespielt wurde, dann beim nächsten Submit zurück in den Main-Flow
   if (pendingMainIndex !== null) {
-    const nextMain = pendingMainIndex;
+    const nextMainFromPending = pendingMainIndex;
     pendingMainIndex = null;
     ignoreTriggersOnce = false;
-    playMain(nextMain);
+    playMain(nextMainFromPending);
     maybeShowNthPopup();
     return;
   }
 
-  const generalTriggerAllowed =
-  (!ignoreTriggersOnce) &&
-  triggersInRange &&
-  canFireAnyTrigger();
-
-const explicitTriggerAllowed = triggersInRange;
-
   const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
   const triggersInRange = mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN;
 
-  // 1) Sonderfälle mit eigener Logik
+  const generalTriggerAllowed =
+    (!ignoreTriggersOnce) &&
+    triggersInRange &&
+    canFireAnyTrigger();
 
-  // A13 = klarer direkter Trigger -> nicht vom globalen Gap blockieren
+  const explicitTriggerAllowed = triggersInRange;
+
+  // A13
   if (
-  explicitTriggerAllowed &&
-  isA13CanYou(raw) &&
-  canFireTriggerId('A13') &&
-  canPlaySpecialNow('A13')
-) {
+    explicitTriggerAllowed &&
+    isA13CanYou(raw) &&
+    canFireTriggerId('A13') &&
+    canPlaySpecialNow('A13')
+  ) {
     registerTriggerFire('A13');
     pendingMainIndex = nextMain;
     ignoreTriggersOnce = true;
@@ -1184,70 +1177,78 @@ const explicitTriggerAllowed = triggersInRange;
     return;
   }
 
-  // Diese bleiben bewusst am globalen Gap, damit keine Schleifen entstehen
+  // A15 / A14
   if (generalTriggerAllowed) {
-  if (generalTriggerAllowed && isGibberishInput(raw) && canFireTriggerId('A15') && canPlaySpecialNow('A15')) {
-    registerTriggerFire('A15');
-    pendingMainIndex = nextMain;
-    ignoreTriggersOnce = true;
-    playSpecial('A15');
-    maybeShowNthPopup();
-    return;
-  }
-
-  if (generalTriggerAllowed && isMonosyllabicStyleInput(raw) && canFireTriggerId('A14') && canPlaySpecialNow('A14')) {
-    registerTriggerFire('A14');
-    pendingMainIndex = nextMain;
-    ignoreTriggersOnce = true;
-    playSpecial('A14');
-    maybeShowNthPopup();
-    return;
-  }
-}
-
-if (
-  explicitTriggerAllowed &&
-  isA10Question(raw) &&
-  canFireTriggerId('A10') &&
-  canPlaySpecialNow('A10')
-) {
-  registerTriggerFire('A10');
-  pendingMainIndex = nextMain;
-  ignoreTriggersOnce = true;
-  playSpecial('A10');
-  maybeShowNthPopup();
-  return;
-}
-
-  // 2) Direkte Trigger aus TRIGGERS
-  if (triggersInRange) {
-  const match = matchTrigger(raw);
-
-  if (match && SPECIAL_VIDEOS[match]) {
-    const strongExplicit = isStrongExplicitTrigger(match);
-
-    const allowed = strongExplicit
-  ? (canFireTriggerId(match) && canPlaySpecialNow(match))
-  : (
-      !ignoreTriggersOnce &&
-      canFireAnyTrigger() &&
-      canFireTriggerId(match) &&
-      canPlaySpecialNow(match)
-    );
-
-    if (allowed) {
-      registerTriggerFire(match);
+    if (
+      isGibberishInput(raw) &&
+      canFireTriggerId('A15') &&
+      canPlaySpecialNow('A15')
+    ) {
+      registerTriggerFire('A15');
       pendingMainIndex = nextMain;
       ignoreTriggersOnce = true;
-      playSpecial(match);
+      playSpecial('A15');
+      maybeShowNthPopup();
+      return;
+    }
+
+    if (
+      isMonosyllabicStyleInput(raw) &&
+      canFireTriggerId('A14') &&
+      canPlaySpecialNow('A14')
+    ) {
+      registerTriggerFire('A14');
+      pendingMainIndex = nextMain;
+      ignoreTriggersOnce = true;
+      playSpecial('A14');
       maybeShowNthPopup();
       return;
     }
   }
-}
 
-  // 3) Probabilistische Fallbacks / Konfrontation / Redirect
-  // ab Main 2, damit der Einstieg nicht sofort schief kippt
+  // A10
+  if (
+    explicitTriggerAllowed &&
+    isA10Question(raw) &&
+    canFireTriggerId('A10') &&
+    canPlaySpecialNow('A10')
+  ) {
+    registerTriggerFire('A10');
+    pendingMainIndex = nextMain;
+    ignoreTriggersOnce = true;
+    playSpecial('A10');
+    maybeShowNthPopup();
+    return;
+  }
+
+  // direkte TRIGGERS
+  if (triggersInRange) {
+    const match = matchTrigger(raw);
+
+    if (match && SPECIAL_VIDEOS[match]) {
+      const strongExplicit = isStrongExplicitTrigger(match);
+
+      const allowed = strongExplicit
+        ? (canFireTriggerId(match) && canPlaySpecialNow(match))
+        : (
+            !ignoreTriggersOnce &&
+            canFireAnyTrigger() &&
+            canFireTriggerId(match) &&
+            canPlaySpecialNow(match)
+          );
+
+      if (allowed) {
+        registerTriggerFire(match);
+        pendingMainIndex = nextMain;
+        ignoreTriggersOnce = true;
+        playSpecial(match);
+        maybeShowNthPopup();
+        return;
+      }
+    }
+  }
+
+  // probabilistische Reaktionen
   const probabilisticAllowed =
     normalized.length > 6 &&
     tokenCount(normalized) >= 2 &&
@@ -1300,7 +1301,6 @@ if (
     }
   }
 
-  // 4) Default: normales nächstes Main-Video
   playMain(nextMain);
   maybeShowNthPopup();
 }
