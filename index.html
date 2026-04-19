@@ -564,6 +564,7 @@
   let ignoreTriggersOnce = false;
   let inPremiumFlow = false;
   let delayedPopupTimer = null;
+    let lastSpecialPlayed = null;
 
   // Cooldown / Trigger history
   let triggerHistory = [];
@@ -584,6 +585,10 @@
 
     function pickRandomWithoutImmediateRepeat(arr){
   if (!arr || arr.length === 0) return null;
+
+      function canPlaySpecialNow(id){
+  return lastSpecialPlayed !== id;
+}
 
   // Alles außer dem zuletzt gespielten
   const filtered = arr.filter(x => x !== lastProbabilisticSpecial);
@@ -929,22 +934,17 @@ function playMain(n){
 }
 
   function playSpecial(id){
-    const src = SPECIAL_VIDEOS[id];
-    if (!src) return;
+  const src = SPECIAL_VIDEOS[id];
+  if (!src) return;
 
-    lastNarrativePlayback = { type: 'special', value: id };
+  lastSpecialPlayed = id;
+  lastNarrativePlayback = { type: 'special', value: id };
 
-    loadVideoSrc(src, {
-      loop: false,
-      onEnded: () => {
-        playIdleLoop();
-      }
-    });
-  }
-    function playIdleLoop(){
-  loadVideoSrc(IDLE_VIDEO, {
-    loop: true,
-    onEnded: null
+  loadVideoSrc(src, {
+    loop: false,
+    onEnded: () => {
+      playIdleLoop();
+    }
   });
 }
 
@@ -1116,6 +1116,7 @@ function maybeShowNthPopup(){
     confrontLastFiredAt = null;
     redirectLastFiredAt = null;
     lastProbabilisticSpecial = null;
+    lastSpecialPlayed = null;
     lastNarrativePlayback = { type: 'main', value: MAIN_MIN };
     showInputPanel();
   }
@@ -1171,7 +1172,8 @@ const explicitTriggerAllowed = triggersInRange;
   if (
   explicitTriggerAllowed &&
   isA13CanYou(raw) &&
-  canFireTriggerId('A13')
+  canFireTriggerId('A13') &&
+  canPlaySpecialNow('A13')
 ) {
     registerTriggerFire('A13');
     pendingMainIndex = nextMain;
@@ -1183,7 +1185,7 @@ const explicitTriggerAllowed = triggersInRange;
 
   // Diese bleiben bewusst am globalen Gap, damit keine Schleifen entstehen
   if (generalTriggerAllowed) {
-  if (isGibberishInput(raw) && canFireTriggerId('A15')) {
+  if (generalTriggerAllowed && isGibberishInput(raw) && canFireTriggerId('A15') && canPlaySpecialNow('A15')) {
     registerTriggerFire('A15');
     pendingMainIndex = nextMain;
     ignoreTriggersOnce = true;
@@ -1192,7 +1194,7 @@ const explicitTriggerAllowed = triggersInRange;
     return;
   }
 
-  if (isMonosyllabicStyleInput(raw) && canFireTriggerId('A14')) {
+  if (generalTriggerAllowed && isMonosyllabicStyleInput(raw) && canFireTriggerId('A14') && canPlaySpecialNow('A14')) {
     registerTriggerFire('A14');
     pendingMainIndex = nextMain;
     ignoreTriggersOnce = true;
@@ -1205,7 +1207,8 @@ const explicitTriggerAllowed = triggersInRange;
 if (
   explicitTriggerAllowed &&
   isA10Question(raw) &&
-  canFireTriggerId('A10')
+  canFireTriggerId('A10') &&
+  canPlaySpecialNow('A10')
 ) {
   registerTriggerFire('A10');
   pendingMainIndex = nextMain;
@@ -1223,12 +1226,13 @@ if (
     const strongExplicit = isStrongExplicitTrigger(match);
 
     const allowed = strongExplicit
-      ? canFireTriggerId(match)
-      : (
-          !ignoreTriggersOnce &&
-          canFireAnyTrigger() &&
-          canFireTriggerId(match)
-        );
+  ? (canFireTriggerId(match) && canPlaySpecialNow(match))
+  : (
+      !ignoreTriggersOnce &&
+      canFireAnyTrigger() &&
+      canFireTriggerId(match) &&
+      canPlaySpecialNow(match)
+    );
 
     if (allowed) {
       registerTriggerFire(match);
