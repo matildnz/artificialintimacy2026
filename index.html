@@ -596,6 +596,9 @@
   lastProbabilisticSpecial = chosen;
   return chosen;
 }
+    function isStrongExplicitTrigger(id){
+  return ['A01', 'A04', 'A10', 'A11', 'A13', 'A16'].includes(id);
+}
     
   function clearDelayedPopupTimer(){
     if (delayedPopupTimer) {
@@ -1153,17 +1156,12 @@ function maybeShowNthPopup(){
     return;
   }
 
-  const triggersInRange =
-  mainIndex >= 1 &&
-  mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN;
   const generalTriggerAllowed =
-    (!ignoreTriggersOnce) &&
-    triggersInRange &&
-    canFireAnyTrigger();
+  (!ignoreTriggersOnce) &&
+  triggersInRange &&
+  canFireAnyTrigger();
 
-  const priorityTriggerAllowed =
-    (!ignoreTriggersOnce) &&
-    triggersInRange;
+const explicitTriggerAllowed = triggersInRange;
 
   const nextMain = (mainIndex < MAIN_MAX) ? (mainIndex + 1) : MAIN_MIN;
 
@@ -1171,10 +1169,10 @@ function maybeShowNthPopup(){
 
   // A13 = klarer direkter Trigger -> nicht vom globalen Gap blockieren
   if (
-    priorityTriggerAllowed &&
-    isA13CanYou(raw) &&
-    canFireTriggerId('A13')
-  ) {
+  explicitTriggerAllowed &&
+  isA13CanYou(raw) &&
+  canFireTriggerId('A13')
+) {
     registerTriggerFire('A13');
     pendingMainIndex = nextMain;
     ignoreTriggersOnce = true;
@@ -1185,53 +1183,63 @@ function maybeShowNthPopup(){
 
   // Diese bleiben bewusst am globalen Gap, damit keine Schleifen entstehen
   if (generalTriggerAllowed) {
-    if (isGibberishInput(raw) && canFireTriggerId('A15')) {
-      registerTriggerFire('A15');
-      pendingMainIndex = nextMain;
-      ignoreTriggersOnce = true;
-      playSpecial('A15');
-      maybeShowNthPopup();
-      return;
-    }
-
-    if (isMonosyllabicStyleInput(raw) && canFireTriggerId('A14')) {
-      registerTriggerFire('A14');
-      pendingMainIndex = nextMain;
-      ignoreTriggersOnce = true;
-      playSpecial('A14');
-      maybeShowNthPopup();
-      return;
-    }
-
-    if (isA10Question(raw) && canFireTriggerId('A10')) {
-      registerTriggerFire('A10');
-      pendingMainIndex = nextMain;
-      ignoreTriggersOnce = true;
-      playSpecial('A10');
-      maybeShowNthPopup();
-      return;
-    }
+  if (isGibberishInput(raw) && canFireTriggerId('A15')) {
+    registerTriggerFire('A15');
+    pendingMainIndex = nextMain;
+    ignoreTriggersOnce = true;
+    playSpecial('A15');
+    maybeShowNthPopup();
+    return;
   }
+
+  if (isMonosyllabicStyleInput(raw) && canFireTriggerId('A14')) {
+    registerTriggerFire('A14');
+    pendingMainIndex = nextMain;
+    ignoreTriggersOnce = true;
+    playSpecial('A14');
+    maybeShowNthPopup();
+    return;
+  }
+}
+
+if (
+  explicitTriggerAllowed &&
+  isA10Question(raw) &&
+  canFireTriggerId('A10')
+) {
+  registerTriggerFire('A10');
+  pendingMainIndex = nextMain;
+  ignoreTriggersOnce = true;
+  playSpecial('A10');
+  maybeShowNthPopup();
+  return;
+}
 
   // 2) Direkte Trigger aus TRIGGERS
-  if (!ignoreTriggersOnce && triggersInRange) {
-    const match = matchTrigger(raw);
+  if (triggersInRange) {
+  const match = matchTrigger(raw);
 
-    if (match && SPECIAL_VIDEOS[match]) {
-      const allowed = isPriorityTrigger(match)
-        ? canFireTriggerId(match)
-        : (canFireAnyTrigger() && canFireTriggerId(match));
+  if (match && SPECIAL_VIDEOS[match]) {
+    const strongExplicit = isStrongExplicitTrigger(match);
 
-      if (allowed) {
-        registerTriggerFire(match);
-        pendingMainIndex = nextMain;
-        ignoreTriggersOnce = true;
-        playSpecial(match);
-        maybeShowNthPopup();
-        return;
-      }
+    const allowed = strongExplicit
+      ? canFireTriggerId(match)
+      : (
+          !ignoreTriggersOnce &&
+          canFireAnyTrigger() &&
+          canFireTriggerId(match)
+        );
+
+    if (allowed) {
+      registerTriggerFire(match);
+      pendingMainIndex = nextMain;
+      ignoreTriggersOnce = true;
+      playSpecial(match);
+      maybeShowNthPopup();
+      return;
     }
   }
+}
 
   // 3) Probabilistische Fallbacks / Konfrontation / Redirect
   // ab Main 2, damit der Einstieg nicht sofort schief kippt
