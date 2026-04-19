@@ -305,14 +305,14 @@
   ];
 
   // Anfang stärker, später schwächer
-  const FALLBACK_CHANCE_EARLY = 0.55;
+  const FALLBACK_CHANCE_EARLY = 0.35;
   const FALLBACK_CHANCE_LATE = 0.25;
 
-  const CONFRONT_CHANCE_EARLY = 0.18;
-  const CONFRONT_CHANCE_LATE = 0.08;
+  const CONFRONT_CHANCE_EARLY = 0.28;
+  const CONFRONT_CHANCE_LATE = 0.45;
 
-  const REDIRECT_CHANCE_EARLY = 0.22;
-  const REDIRECT_CHANCE_LATE = 0.10;
+  const REDIRECT_CHANCE_EARLY = 0.35;
+  const REDIRECT_CHANCE_LATE = 0.20;
 
   // eigene Cooldowns für probabilistische Reaktionen
   const FALLBACK_COOLDOWN_STEPS = 4;
@@ -919,58 +919,59 @@ function playMain(n){
     }
   }
 
-  function maybeShowNthPopup(){
-    if (POPUP_EVERY_N <= 0) return;
-    if (inputCount <= 0) return;
-    if (inputCount % POPUP_EVERY_N !== 0) return;
+  const POPUP_CHANCE = 0.28; // ca. jede 3–4 Eingaben im Schnitt
+const POPUP_MIN_INPUTS = 2; // nicht direkt am Anfang
 
-    const p = POPUP_LIBRARY[popupCursor % POPUP_LIBRARY.length];
-    popupCursor++;
+function maybeShowNthPopup(){
+  if (inputCount < POPUP_MIN_INPUTS) return;
 
-    if (p.kind === 'one'){
-      openPopup({
-        title: p.title,
-        text: p.text,
-        actions: [
-          {
-            text: p.okText || 'OK',
-            onClick: () => {
-              closePopup();
+  if (Math.random() > POPUP_CHANCE) return;
 
-              if (p.action === 'GO_TO_27') {
-                playMain(27);
-              }
+  const p = POPUP_LIBRARY[popupCursor % POPUP_LIBRARY.length];
+  popupCursor++;
+
+  if (p.kind === 'one'){
+    openPopup({
+      title: p.title,
+      text: p.text,
+      actions: [
+        {
+          text: p.okText || 'OK',
+          onClick: () => {
+            closePopup();
+            if (p.action === 'GO_TO_27') {
+              playMain(27);
             }
           }
-        ]
-      });
-    }
-
-    if (p.kind === 'two'){
-      openPopup({
-        title: p.title,
-        text: p.text,
-        actions: [
-          {
-            text: p.okText || 'OK',
-            onClick: () => {
-              closePopup();
-
-              if (p.action === 'GO_TO_27') {
-                playMain(27);
-              }
-            }
-          },
-          {
-            text: p.cancelText || 'Abbrechen',
-            onClick: () => {
-              closePopup();
-            }
-          }
-        ]
-      });
-    }
+        }
+      ]
+    });
   }
+
+  if (p.kind === 'two'){
+    openPopup({
+      title: p.title,
+      text: p.text,
+      actions: [
+        {
+          text: p.okText || 'OK',
+          onClick: () => {
+            closePopup();
+            if (p.action === 'GO_TO_27') {
+              playMain(27);
+            }
+          }
+        },
+        {
+          text: p.cancelText || 'Abbrechen',
+          onClick: () => {
+            closePopup();
+          }
+        }
+      ]
+    });
+  }
+}
 
   /********************************************************************
    * Premium / end flow UI
@@ -1063,7 +1064,9 @@ function playMain(n){
     return;
   }
 
-  const triggersInRange = mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN;
+  const triggersInRange =
+  mainIndex >= 1 &&
+  mainIndex <= TRIGGERS_ACTIVE_UNTIL_MAIN;
   const generalTriggerAllowed =
     (!ignoreTriggersOnce) &&
     triggersInRange &&
