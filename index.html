@@ -944,6 +944,27 @@ function playMain(n){
     }
   });
 }
+    function playIdleLoop(){
+  console.log('Idle startet:', IDLE_VIDEO);
+
+  clearDelayedPopupTimer();
+  clearVideoEndFallback();
+
+  video.pause();
+  video.onended = null;
+  video.onloadedmetadata = null;
+  video.loop = true;
+  video.playsInline = true;
+
+  video.src = IDLE_VIDEO;
+  video.load();
+
+  video.onerror = () => {
+    console.error('Idle konnte nicht geladen werden:', video.currentSrc);
+  };
+
+  tryPlayMedia();
+}
 
   /********************************************************************
    * Popup system
