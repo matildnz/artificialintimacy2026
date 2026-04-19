@@ -506,6 +506,7 @@
   let fallbackLastFiredAt = null;
   let confrontLastFiredAt = null;
   let redirectLastFiredAt = null;
+    let videoEndFallbackTimer = null;
 
   /********************************************************************
    * Helpers
@@ -519,6 +520,12 @@
       delayedPopupTimer = null;
     }
   }
+    function clearVideoEndFallback(){
+  if (videoEndFallbackTimer) {
+    clearTimeout(videoEndFallbackTimer);
+    videoEndFallbackTimer = null;
+  }
+}
 
   function normalizeForMatch(raw){
     const lower = (raw || '').toLowerCase();
@@ -723,16 +730,34 @@ function includesAnyKeyword(text, keywords){
 
   function loadVideoSrc(src, {loop=false, onEnded=null} = {}){
   clearDelayedPopupTimer();
+  clearVideoEndFallback();
 
   video.pause();
   video.onended = null;
   video.loop = !!loop;
   video.playsInline = true;
 
-  if (onEnded) video.onended = onEnded;
+  const wrappedOnEnded = () => {
+    clearVideoEndFallback();
+    if (onEnded) onEnded();
+  };
+
+  if (onEnded) {
+    video.onended = wrappedOnEnded;
+  }
 
   video.src = src;
   video.load();
+
+  video.onloadedmetadata = () => {
+    if (!loop && onEnded && Number.isFinite(video.duration) && video.duration > 0) {
+      videoEndFallbackTimer = setTimeout(() => {
+        console.log('Fallback-Übergang für:', src);
+        wrappedOnEnded();
+      }, Math.max(0, video.duration * 1000 + 200));
+    }
+  };
+
   tryPlayMedia();
 }
     //nur kurz zum debuggen eingefügt
@@ -745,7 +770,7 @@ function includesAnyKeyword(text, keywords){
   lastNarrativePlayback = { type: 'main', value: n };
 
   // Eingabefeld bei den End-/Premium-Videos direkt ausblenden
-  if (n === 27 || n === 28 || n === 29) {
+  if (n === 26 ||n === 27 || n === 28 || n === 29) {
     hideInputPanel();
   } else {
     showInputPanel();
