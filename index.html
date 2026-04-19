@@ -507,6 +507,7 @@
   let confrontLastFiredAt = null;
   let redirectLastFiredAt = null;
     let videoEndFallbackTimer = null;
+    let lastProbabilisticSpecial = null;
 
   /********************************************************************
    * Helpers
@@ -514,6 +515,21 @@
   function pad2(n){ return String(n).padStart(2,'0'); }
   function mainFile(n){ return `Video${pad2(n)}.mp4`; }
 
+    function pickRandomWithoutImmediateRepeat(arr){
+  if (!arr || arr.length === 0) return null;
+
+  // Alles außer dem zuletzt gespielten
+  const filtered = arr.filter(x => x !== lastProbabilisticSpecial);
+
+  // Wenn alles gefiltert wurde (z. B. nur 1 Element), fallback auf original
+  const pool = filtered.length ? filtered : arr;
+
+  const chosen = pool[Math.floor(Math.random() * pool.length)];
+
+  lastProbabilisticSpecial = chosen;
+  return chosen;
+}
+    
   function clearDelayedPopupTimer(){
     if (delayedPopupTimer) {
       clearTimeout(delayedPopupTimer);
@@ -1024,6 +1040,7 @@ function maybeShowNthPopup(){
     fallbackLastFiredAt = null;
     confrontLastFiredAt = null;
     redirectLastFiredAt = null;
+    lastProbabilisticSpecial = null;
     lastNarrativePlayback = { type: 'main', value: MAIN_MIN };
     showInputPanel();
   }
@@ -1165,7 +1182,7 @@ function maybeShowNthPopup(){
       pendingMainIndex = nextMain;
       ignoreTriggersOnce = true;
 
-      const chosen = pickRandom(['A20', 'A21']);
+      const chosen = pickRandomWithoutImmediateRepeat(['A20', 'A21']);
       playSpecial(chosen);
       maybeShowNthPopup();
       return;
@@ -1178,7 +1195,7 @@ function maybeShowNthPopup(){
       pendingMainIndex = nextMain;
       ignoreTriggersOnce = true;
 
-      const chosen = pickRandom(['A22', 'A23']);
+      const chosen = pickRandomWithoutImmediateRepeat(['A22', 'A23']);
       playSpecial(chosen);
       maybeShowNthPopup();
       return;
@@ -1191,7 +1208,7 @@ function maybeShowNthPopup(){
       pendingMainIndex = nextMain;
       ignoreTriggersOnce = true;
 
-      const chosen = pickRandom(['A24', 'A25']);
+      const chosen = pickRandomWithoutImmediateRepeat(['A24', 'A25']);
       playSpecial(chosen);
       maybeShowNthPopup();
       return;
