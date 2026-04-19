@@ -728,12 +728,13 @@ function includesAnyKeyword(text, keywords){
     await Promise.allSettled([vp, ap]);
   }
 
-  function loadVideoSrc(src, {loop=false, onEnded=null} = {}){
+  function loadVideoSrc(src, {loop=false, onEnded=null, useFallback=true} = {}){
   clearDelayedPopupTimer();
   clearVideoEndFallback();
 
   video.pause();
   video.onended = null;
+  video.onloadedmetadata = null;
   video.loop = !!loop;
   video.playsInline = true;
 
@@ -750,30 +751,56 @@ function includesAnyKeyword(text, keywords){
   video.load();
 
   video.onloadedmetadata = () => {
-    if (!loop && onEnded && Number.isFinite(video.duration) && video.duration > 0) {
+    if (
+      useFallback &&
+      !loop &&
+      onEnded &&
+      Number.isFinite(video.duration) &&
+      video.duration > 0
+    ) {
       videoEndFallbackTimer = setTimeout(() => {
         console.log('Fallback-Übergang für:', src);
         wrappedOnEnded();
-      }, Math.max(0, video.duration * 1000 + 200));
+      }, Math.max(0, video.duration * 1000 + 1500));
     }
   };
 
   tryPlayMedia();
 }
-    //nur kurz zum debuggen eingefügt
-    video.onerror = () => {
-  console.error('Video konnte nicht geladen werden:', video.src);
-};
 
-  function playMain(n){
+function playMain(n){
   mainIndex = n;
   lastNarrativePlayback = { type: 'main', value: n };
 
-  // Eingabefeld bei den End-/Premium-Videos direkt ausblenden
-  if (n === 26 ||n === 27 || n === 28 || n === 29) {
+  if (n === 26 || n === 27 || n === 28 || n === 29) {
     hideInputPanel();
   } else {
     showInputPanel();
+  }
+
+  // Sonderfall: Video 27 soll nach dem ersten Durchlauf selbst loopen
+  if (n === 27) {
+    clearDelayedPopupTimer();
+    clearVideoEndFallback();
+
+    video.pause();
+    video.onended = null;
+    video.onloadedmetadata = null;
+    video.loop = false;
+    video.playsInline = true;
+    video.src = mainFile(27);
+    video.load();
+
+    video.onended = () => {
+      showBackToStartOnly();
+      loadVideoSrc(mainFile(27), {
+        loop: true,
+        useFallback: false
+      });
+    };
+
+    tryPlayMedia();
+    return;
   }
 
   let onEnded = () => {
@@ -786,11 +813,6 @@ function includesAnyKeyword(text, keywords){
       inPremiumFlow = true;
       hideInputPanel();
       showPremiumPopup();
-    };
-  } else if (n === 27) {
-    onEnded = () => {
-      playIdleLoop();
-      showBackToStartOnly();
     };
   } else if (n === 28) {
     onEnded = () => {
@@ -806,7 +828,8 @@ function includesAnyKeyword(text, keywords){
 
   loadVideoSrc(mainFile(n), {
     loop: false,
-    onEnded
+    onEnded,
+    useFallback: n !== 28
   });
 
   if (n === 1) {
