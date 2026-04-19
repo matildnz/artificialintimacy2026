@@ -376,19 +376,27 @@
         'du bist nicht real',
         'du bist unecht',
         'du bist fake',
-        'das ist fake',
         'du wirkst fake',
         'du wirkst nicht echt',
         'bist du echt',
         'bist du real',
         'bist du ein mensch',
+        'bist du ein computer',
         'bist du künstlich',
         'du bist nur eine ki',
         'du bist nur ein programm',
         'du bist nur ein computer',
         'du nicht echt',
         'weil du nicht echt bist',
-        'weil du kein mensch bist'
+        'weil du kein mensch bist',
+        'du bist ein computer',
+        'weil du ein computer bist',
+        'weil du ein bot bist',
+        'du bist ein bot',
+        'du bist eine ki',
+        'du bist ein programm',
+        'weil du ein programm bist'
+        
       ],
     },
     {
@@ -610,19 +618,24 @@ function includesAnyKeyword(text, keywords){
 }
 
   function isMonosyllabicStyleInput(rawInput){
-    const normalized = normalizeForMatch(rawInput);
-    if (!normalized) return false;
+  const normalized = normalizeForMatch(rawInput);
+  if (!normalized) return false;
 
-    // Ausnahmen
-    if (includesAnyKeyword(normalized, ['nein', 'nope', 'nee'])) return false;
-    if (includesAnyKeyword(normalized, ['lol', 'haha', 'hahaha'])) return false;
+  if (includesAnyKeyword(normalized, ['nein', 'nope', 'nee'])) return false;
+  if (includesAnyKeyword(normalized, ['lol', 'haha', 'hahaha'])) return false;
 
-    const tokens = normalized.split(/\s+/).filter(Boolean);
-    if (tokens.length !== 1) return false;
+  const tokens = normalized.split(/\s+/).filter(Boolean);
 
-    const word = tokens[0];
-    return word.length <= 3;
+  if (tokens.length === 1) {
+    return tokens[0].length <= 4;
   }
+
+  if (tokens.length === 2) {
+    return tokens.join('').length <= 6;
+  }
+
+  return false;
+}
 
   function isGibberishInput(rawInput){
     const normalized = normalizeForMatch(rawInput);
